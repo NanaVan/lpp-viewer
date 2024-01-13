@@ -10,7 +10,7 @@ def process_file(event):
         document.getElementById('fileShow').innerHTML = ""
         lppion = input_file.value
         try:
-            fs = io.StringIO(lppion.decode())
+            fs = io.StringIO(lppion.decode('CP932'))
             with open('new.lpp', 'w') as lpp:
                 for f in fs:
                     lpp.write(f)

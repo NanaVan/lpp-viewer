@@ -72,6 +72,14 @@ class IID():
                 A, element, Q = re.split("([A-Z][a-z]?)", segment[0]+segment[1][:-1])
                 self.cur.execute("INSERT INTO LPPDATA (A,ELEMENT,Q,ION,YIELD) VALUES (?,?,?,?,?)", (A, element, Q, ''.join([A,element,Q]), segment[-1][1:]))
             self.conn.commit()
+        # reset yield for both fission (including pps for AFhihg, AFmid and AFlow) and PF processing
+        result = self.cur.execute("SELECT sum(YIELD), ION FROM LPPDATA GROUP BY ION").fetchall()
+        self.cur.executemany("UPDATE LPPDATA SET YIELD=? WHERE ION=?", result)
+        self.conn.commit()
+        self.cur.execute("CREATE TABLE TEMPTABLE as SELECT DISTINCT * FROM LPPDATA")
+        self.cur.execute("DROP TABLE LPPDATA")
+        self.cur.execute("ALTER TABLE TEMPTABLE RENAME TO LPPDATA")
+        self.conn.commit()
         self.calc_isochronous_peak()
 
     def prepare_result(self):
