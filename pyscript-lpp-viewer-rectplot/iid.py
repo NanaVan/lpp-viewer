@@ -17,6 +17,9 @@ class IID():
     u2kg = 1.66053906660e-27 # amount of kg per 1 u
     MeV2u = 1.07354410233e-3 # amount of u per 1 MeV
 
+    # time unit
+    time_unit = {'Yy': 31536000*1e24, 'Zy': 31536000*1e21, 'Ey': 31536000*1e18, 'Py': 31536000*1e15, 'Ty': 31536000*1e12, 'Gy': 31536000*1e9, 'My': 31536000*1e6, 'ky': 31536000*1e3, 'y': 31536000, 'd': 86400, 'h': 3600, 'm': 60, 's': 1, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9, 'ps': 1e-12, 'fs': 1e-15, 'as': 1e-18, 'zs': 1e-21, 'ys': 1e-24}
+
     def __init__(self, lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8, nubase_update=False, verbose=False):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
@@ -157,6 +160,10 @@ class IID():
         i = 0
         while (i < len(ion)):
             temp = self.cur.execute("SELECT ION,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[i],isometric_state[i])).fetchone()
+            # drop the ion of life time < 10 ms
+            if self.life_transform(temp[6]) <= 10 * self.time_unit['ms']:
+                i += 1
+                continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
             peak_width = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics
             peak_height = weight[i] / peak_width
@@ -210,6 +217,10 @@ class IID():
         i = 0
         while (i < len(ion)):
             temp = self.cur.execute("SELECT ION,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[i],isometric_state[i])).fetchone()
+            # drop the ion of life time < 1 s
+            if self.life_transform(temp[6]) <= 1 * self.time_unit['s']:
+                i += 1
+                continue
             ion_yield, mass, Q = float(temp[4]), float(temp[2]), float(temp[-1])
             # filter mass / Q
             if mass / Q <= upper_mass_over_Q and mass / Q >= lower_mass_over_Q:
@@ -304,6 +315,26 @@ class IID():
         self.gamma_setting = gamma_setting
         self.delta_v_over_v = delta_v_over_v
         self.calc_ecooler_peak()
+    
+    def life_transform(self, half_life):
+        '''
+        transform the halflife in SQLite Table to lifetime [s]
+        '''
+        temp = half_life.split() # input half life in str
+        if len(temp) == 1:
+            if temp[0] == 'stbl':
+                return 1e64
+            else:
+                return -1
+        else:
+            if temp[-1].isalpha():
+                try:
+                    temp_0 = float(temp[0]) / np.log(2) * self.time_unit[temp[-1]]
+                except:
+                    temp_0 = float(''.join(re.split("(\d+)", temp[0])[1:])) / np.log(2) * self.time_unit[temp[-1]]
+                return temp_0
+            else:
+                return -1
 
 
 if __name__ == "__main__":
