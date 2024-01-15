@@ -1,5 +1,5 @@
 name = "Data Smoother"
-packages = ["bokeh==3.2.2", "panel", "markdown-it-py", "numpy", "scipy", "sqlite3", "pandas"]
+packages = ["bokeh==3.2.2", "panel", "markdown-it-py", "numpy", "scipy", "sqlite3"]
 [[fetch]]
 files = ['gen_nubase.py', 'iid.py', 'bokeh_show.py', 'ionic_data.db']
 from = './'
