@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from bokeh.plotting import figure, curdoc, show
-from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, FileInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox
 from bokeh.events import ButtonClick
 from bokeh.layouts import layout, row, column
 from bokeh.palettes import YlOrRd9, YlGnBu9
@@ -64,7 +64,7 @@ class Bokeh_show():
         '''
         print('Bokeh: initial complete')
         self._log('Bokeh: initial complete')
-        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, self.checkbox_log_or_linear]), self.p_yield]), self.p_spectrum_linear, self.p_spectrum_log, self.p_table_default, self.p_table_cooler])
+        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), self.checkbox_log_or_linear]), self.p_yield]), self.p_spectrum_linear, self.p_spectrum_log, self.p_table_default, self.p_table_cooler])
 
     def _wrap_data(self, data_type):
         '''
@@ -95,14 +95,12 @@ class Bokeh_show():
             data['color'] = []
         else:
             yield_top = int(np.log10(np.max(data['yield'])))
+            data['xs'] = [np.concatenate([peak_loc-10**np.linspace(2,-8,21), np.array([peak_loc]), peak_loc+10**np.linspace(-8,2,21)]) for peak_loc in data['peak_loc']]
+            data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-(x - pos)**2/ 2 / sig**2) for x, amp, sig, pos in zip(data['xs'], data['weight'], data['peak_sig'], data['peak_loc'])]
             if data_type:
                 data['color'] = [YlOrRd9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlOrRd9[-1] for item in data['yield']]
-                data['xs'] = [np.concatenate([np.linspace(peak_loc-5, peak_loc+5, 49), np.array([peak_loc-5])]) for peak_loc in data['peak_loc']]
-                data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-(x - pos)**2/ 2 / sig**2) for x, amp, sig, pos in zip(data['xs'], data['weight'], data['peak_sig'], data['peak_loc'])]
             else:
                 data['color'] = [YlGnBu9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlGnBu9[-1] for item in data['yield']]
-                data['xs'] = [np.concatenate([np.linspace(peak_loc-1e-3, peak_loc+1e-3, 49), np.array([peak_loc-1e-3])]) for peak_loc in data['peak_loc']]
-                data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-(x - pos)**2/ 2 / sig**2) for x, amp, sig, pos in zip(data['xs'], data['weight'], data['peak_sig'], data['peak_loc'])]
         if data_type:
             data['gamma'] = [item[12] for item in result]
         else:
@@ -120,10 +118,15 @@ class Bokeh_show():
                 self.input_gamma_setting.value = self.temp_gamma
                 print("{:}({:}), γ: {:.3f}".format(self.temp_ion, self.temp_isometric_state, self.temp_gamma))
                 self._log("Ion Selected: {:}({:}), γ: {:.3f}".format(self.temp_ion, self.temp_isometric_state, self.temp_gamma))
+                ion_index = [i for i, n in enumerate(self.spectrum_source.data['ion']) if n == self.temp_ion]
+                iso_index = [i for i, n in enumerate(self.spectrum_source.data['isometric']) if n == self.temp_isometric_state]
+                index = np.intersect1d(ion_index, iso_index)
+                self.ion_harmonics.data = {'xs': [self.spectrum_source.data['xs'][_index] for _index in index], 'ys': [self.spectrum_source.data['ys'][_index] for _index in index], 'ion': [self.spectrum_source.data['ion'][_index] for _index in index], 'isometric': [self.spectrum_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.spectrum_source.data['peak_loc'][_index] for _index in index], 'weight': [self.spectrum_source.data['weight'][_index] for _index in index], 'yield': [self.spectrum_source.data['yield'][_index] for _index in index], 'harmonic': [self.spectrum_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.spectrum_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.spectrum_source.data['half_life'][_index] for _index in index]}
             except:
                 pass
 
         self.spectrum_source = ColumnDataSource(data=self._wrap_data(1))
+        self.ion_harmonics = ColumnDataSource(data={'xs': [], 'ys': [], 'ion': [], 'isometric': [], 'peak_loc': [], 'weight': [], 'yield': [], 'harmonic': [], 'rev_freq': [], 'half_life': []})
         ion_tooltip = [
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("peak location", '@peak_loc'+' kHz'),
@@ -139,14 +142,16 @@ class Bokeh_show():
         self.p_spectrum_log.tools[-1].point_policy = 'follow_mouse'
         self.p_spectrum_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
         self.p_spectrum_log.yaxis.axis_label = "psd [arb. unit]"
-        self.p_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="black")
+        self.p_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
+        self.p_spectrum_log.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
         self.p_spectrum_linear = figure(width=1000, height=300, title='Simulation Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
         self.p_spectrum_linear.tools[-1].tooltips=ion_tooltip            
         self.p_spectrum_linear.tools[-1].attachment = 'vertical'
         self.p_spectrum_linear.tools[-1].point_policy = 'follow_mouse'
         self.p_spectrum_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
         self.p_spectrum_linear.yaxis.axis_label = "psd [arb. unit]"
-        self.p_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="black")
+        self.p_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
+        self.p_spectrum_linear.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
 
         self.p_yield = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
         self.p_yield.rect(x='N', y='Z', fill_color='color', source=self.spectrum_source, line_color='lightgray', width=1., height=1.)
@@ -183,6 +188,10 @@ class Bokeh_show():
                 self.input_gamma_setting.value = self.temp_gamma
                 print("{:}({:}), γ: {:.3f}".format(self.temp_ion, self.temp_isometric_state, self.temp_gamma))
                 self._log("Ion Selected: {:}({:}), γ: {:.3f}".format(self.temp_ion, self.temp_isometric_state, self.temp_gamma))
+                ion_index = [i for i, n in enumerate(self.cooler_source.data['ion']) if n == self.temp_ion]
+                iso_index = [i for i, n in enumerate(self.cooler_source.data['isometric']) if n == self.temp_isometric_state]
+                index = np.intersect1d(ion_index, iso_index)
+                self.ion_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
             except:
                 pass
 
@@ -212,10 +221,6 @@ class Bokeh_show():
         else:
             data = self._wrap_data(0)
             self.cooler_source.data = data 
-            try:
-                print(self.cooler_source.data['ys'])
-            except:
-                pass
             self.p_table_cooler.source.data = data
     
     def panel_control(self):
@@ -225,7 +230,7 @@ class Bokeh_show():
         Brho, peak location calibrate
         '''
         # input for Brho
-        self.checkbox_Brho_input = Checkbox(label='Using Bρ for calibrate', height=50, active=False)
+        self.checkbox_Brho_input = Checkbox(label='Using Bρ for calibrate', height=20, active=False)
         self.input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]', disabled=True)
         def update_Brho_log(attr, old, new):
             self._log('calibrate ...')
@@ -263,7 +268,7 @@ class Bokeh_show():
         self.button_calibrate.on_event(ButtonClick, calibrate_ion)
 
         # button for ecooler
-        self.checkbox_ec_on = Checkbox(label='EC on', height=50, active=False)
+        self.checkbox_ec_on = Checkbox(label='EC on', height=20, active=False)
         self.input_gamma_setting = NumericInput(value=self.iid.gamma_setting, height=50, low=1.0001, high=5.0000, mode='float', title='γ setting', disabled=True)
         self.input_delta_v_over_v = NumericInput(value=self.iid.delta_v_over_v, height=50, low=1e-8, high=1e-5, mode='float', title='Δv/v', disabled=True)
         self.button_set = Button(label='set', height=50, width=80, button_type='primary', disabled=True)
@@ -297,7 +302,7 @@ class Bokeh_show():
         # button for global setting
         self.input_gamma_t = NumericInput(value=self.iid.gamma_t, height=50, low=1.0001, high=5.0000, mode='float', title='γt')
         self.input_delta_Brho_over_Brho = NumericInput(value=self.iid.delta_Brho_over_Brho, height=50, low=0.01, high=10.00, mode='float', title='ΔΒρ/Βρ, %')
-        self.checkbox_log_or_linear = Checkbox(label='log scale', height=50, active=True)
+        self.checkbox_log_or_linear = Checkbox(label='log scale', height=20, active=True)
         def update_gamma_t(attr, old, new):
             print('update γt ...')
             self.iid.update_gamma_t(float(new), self.checkbox_ec_on.active)
@@ -347,6 +352,36 @@ class Bokeh_show():
             print('update complete!')
             self._log('update complete!')
         self.input_span.on_change('value', update_span)
+
+        result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
+        ion_completion = ["{:}({:})".format(ion, isometric) for ion, isometric in result]
+        self.input_ion = AutocompleteInput(completions=ion_completion, title='ion')
+        self.button_find_ion = Button(label='find', height=50, width=80, button_type='primary')
+        self.button_reset_ion = Button(label='reset', height=50, width=80, button_type='primary')
+        def find_ion():
+            if self.input_ion.value != '':
+                ion, isometric = self.input_ion.value.split('(')
+                print('{:}({:})'.format(ion, isometric[:-1]))
+                if self.checkbox_ec_on.active:
+                    ion_index = [i for i, n in enumerate(self.cooler_source.data['ion']) if n == ion]
+                    iso_index = [i for i, n in enumerate(self.cooler_source.data['isometric']) if n == isometric[:-1]]
+                    index = np.intersect1d(ion_index, iso_index)
+                    if len(index) < 1:
+                        self._log('no ion available in the spectrum!')
+                        return
+                    self.ion_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
+                else:
+                    ion_index = [i for i, n in enumerate(self.spectrum_source.data['ion']) if n == ion]
+                    iso_index = [i for i, n in enumerate(self.spectrum_source.data['isometric']) if n == isometric[:-1]]
+                    index = np.intersect1d(ion_index, iso_index)
+                    if len(index) < 1:
+                        self._log('no ion available in the spectrum!')
+                        return
+                    self.ion_harmonics.data = {'xs': [self.spectrum_source.data['xs'][_index] for _index in index], 'ys': [self.spectrum_source.data['ys'][_index] for _index in index], 'ion': [self.spectrum_source.data['ion'][_index] for _index in index], 'isometric': [self.spectrum_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.spectrum_source.data['peak_loc'][_index] for _index in index], 'weight': [self.spectrum_source.data['weight'][_index] for _index in index], 'yield': [self.spectrum_source.data['yield'][_index] for _index in index], 'harmonic': [self.spectrum_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.spectrum_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.spectrum_source.data['half_life'][_index] for _index in index]}
+        self.button_find_ion.on_event(ButtonClick, find_ion)
+        def reset_ion():
+            self.ion_harmonics.data = {'xs': [], 'ys': [], 'ion': [], 'isometric': [], 'peak_loc': [], 'weight': [], 'yield': [], 'harmonic': [], 'rev_freq': [], 'half_life': []}
+        self.button_reset_ion.on_event(ButtonClick, reset_ion)
         
         self.div_log = Div(text='', width=300, height=50, background='darkorange')
 
