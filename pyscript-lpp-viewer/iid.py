@@ -4,11 +4,6 @@
 import numpy as np
 import re, sqlite3, os
 
-from gen_nubase import gen_nubase
-
-
-
-
 class IID():
     '''
     A script for auto calibrating the ion identification result based on the input Schottky spectrum
@@ -46,14 +41,8 @@ class IID():
         self.delta_v_over_v = delta_v_over_v # %
         self.L_CSRe = L_CSRe # m
         self.verbose = verbose
-        # check database ionic_data.db exists, if not create one
-        if nubase_update or ((not nubase_update) and (not os.path.exists("./ionic_data.db"))):
-            gen_nubase()
         self.conn = sqlite3.connect("./ionic_data.db")
         self.cur = self.conn.cursor()
-        # check table ioncidata exists
-        if self.cur.execute("SELECT count(name) FROM sqlite_master WHERE type='table' and name='IONICDATA'").fetchone()[0] == 0:
-            gen_nubase()
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
         table_name = [(part[0],) for part in self.cur.fetchall() if (part[0] != 'IONICDATA')]
