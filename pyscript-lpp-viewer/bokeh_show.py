@@ -64,7 +64,7 @@ class Bokeh_show():
         '''
         print('Bokeh: initial complete')
         self._log('Bokeh: initial complete')
-        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), self.checkbox_log_or_linear]), self.p_yield]), self.p_spectrum_linear, self.p_spectrum_log, self.p_table_default, self.p_table_cooler])
+        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.p_yield]), self.p_spectrum_linear, self.p_spectrum_log, self.p_table_default, self.p_table_cooler])
 
     def _wrap_data(self, data_type):
         '''
@@ -72,9 +72,9 @@ class Bokeh_show():
         return data for plot and table
         '''
         if data_type:
-            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, WEIGHT, GAMMA FROM ISOCHRONOUSION").fetchall()
+            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
         else:
-            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, WEIGHT, PSEUDOGAMMA FROM ECOOLERION").fetchall()
+            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PSEUDOGAMMA FROM ECOOLERION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
         data = {
                 'ion': [item[0] for item in result],
                 'element': [item[1] for item in result],
@@ -87,24 +87,25 @@ class Bokeh_show():
                 'rev_freq': [item[8] for item in result],
                 'half_life': [item[9] for item in result],
                 'yield': [item[10] for item in result],
-                'weight': [item[11] for item in result]
+                'total_yield': [item[11] for item in result],
+                'weight': [item[12] for item in result]
                 }
         if len(data['ion']) == 0:
             data['xs'] = []
             data['ys'] = []
             data['color'] = []
         else:
-            yield_top = int(np.log10(np.max(data['yield'])))
+            yield_top = int(np.log10(np.max(data['total_yield'])))
             data['xs'] = [np.concatenate([peak_loc-10**np.linspace(2,-8,21), np.array([peak_loc]), peak_loc+10**np.linspace(-8,2,21)]) for peak_loc in data['peak_loc']]
             data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-(x - pos)**2/ 2 / sig**2) for x, amp, sig, pos in zip(data['xs'], data['weight'], data['peak_sig'], data['peak_loc'])]
             if data_type:
-                data['color'] = [YlOrRd9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlOrRd9[-1] for item in data['yield']]
+                data['color'] = [YlOrRd9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlOrRd9[-1] for item in data['total_yield']]
             else:
-                data['color'] = [YlGnBu9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlGnBu9[-1] for item in data['yield']]
+                data['color'] = [YlGnBu9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlGnBu9[-1] for item in data['total_yield']]
         if data_type:
-            data['gamma'] = [item[12] for item in result]
+            data['gamma'] = [item[13] for item in result]
         else:
-            data['pseudo_gamma'] = [item[12] for item in result]
+            data['pseudo_gamma'] = [item[13] for item in result]
         return data
 
 
@@ -382,6 +383,14 @@ class Bokeh_show():
         def reset_ion():
             self.ion_harmonics.data = {'xs': [], 'ys': [], 'ion': [], 'isometric': [], 'peak_loc': [], 'weight': [], 'yield': [], 'harmonic': [], 'rev_freq': [], 'half_life': []}
         self.button_reset_ion.on_event(ButtonClick, reset_ion)
+
+        result = self.iid.cur.execute("SELECT min(PEAKMAX) FROM ISOCHRONOUSION").fetchone()[0]
+        self.input_show_threshold = NumericInput(value=result, low=1e-12, high=1e12, height=50, mode='float', title='threshold')
+        def set_threshold(attr, old, new):
+            self._update(1)
+            if self.checkbox_ec_on.active:
+                self._update(0)
+        self.input_show_threshold.on_change('value', set_threshold)
         
         self.div_log = Div(text='', width=300, height=50, background='darkorange')
 

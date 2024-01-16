@@ -73,9 +73,10 @@ class IID():
         result = self.cur.execute("SELECT sum(YIELD), ION FROM LPPDATA GROUP BY ION").fetchall()
         self.cur.executemany("UPDATE LPPDATA SET YIELD=? WHERE ION=?", result)
         self.conn.commit()
-        self.cur.execute("CREATE TABLE TEMPTABLE as SELECT DISTINCT * FROM LPPDATA")
-        self.cur.execute("DROP TABLE LPPDATA")
-        self.cur.execute("ALTER TABLE TEMPTABLE RENAME TO LPPDATA")
+        self.cur.executescript("""
+            CREATE TABLE TEMPTABLE as SELECT DISTINCT * FROM LPPDATA;
+            DROP TABLE LPPDATA;
+            ALTER TABLE TEMPTABLE RENAME TO LPPDATA;""")
         self.conn.commit()
         self.calc_isochronous_peak()
         self.calc_ecooler_peak()
@@ -137,8 +138,10 @@ class IID():
                 GAMMA       REAL,
                 SOURCE      TEXT,                
                 YIELD       REAL,
+                TOTALYIELD  REAL,
                 PEAKLOC     REAL,
                 PEAKSIG     REAL,
+                PEAKMAX     REAL,
                 HARMONIC    INT,
                 REVFREQ     REAL,     
                 TYPE        TEXT,
@@ -165,15 +168,21 @@ class IID():
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
             peak_width = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics
             peak_sig = peak_width / 2 / np.sqrt(2 * np.log(2))
+            peak_max = weight[i] / peak_sig / np.sqrt(2*np.pi)
             # filter harmonics
             if len(harmonics) == 1:
-                self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], rev_freq[i], int(harmonics[-1])))
+                self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], rev_freq[i], int(harmonics[-1])))
             elif len(harmonics) > 1:
-                re_set = [(*temp, gamma[i], weight[i], (harmonics[j]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[j], rev_freq[i], int(harmonics[j])) for j in range(len(harmonics))]
-                self.cur.executemany("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
+                re_set = [(*temp, gamma[i], weight[i], (harmonics[j]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[j], peak_max[j], rev_freq[i], int(harmonics[j])) for j in range(len(harmonics))]
+                self.cur.executemany("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
             else:
                 pass
             i += 1
+        self.conn.commit()
+        # reset total yield for only .lpp result (containing bare, H-like, etc. but not containing isomers)
+        result = self.cur.execute("SELECT DISTINCT N, Z FROM ISOCHRONOUSION").fetchall()
+        result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND TYPE='bare' AND ISOMERIC='0'", _result).fetchone() for _result in result]
+        self.cur.executemany("UPDATE ISOCHRONOUSION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
         self.conn.commit()
                         
     def calc_ecooler_peak(self):
@@ -198,8 +207,10 @@ class IID():
                 PSEUDOGAMMA REAL,      
                 SOURCE      TEXT,
                 YIELD       REAL,
+                TOTALYIELD  REAL,
                 PEAKLOC     REAL,
                 PEAKSIG     REAL,
+                PEAKMAX     REAL,
                 HARMONIC    INT,
                 REVFREQ     REAL,     
                 TYPE        TEXT,
@@ -231,18 +242,24 @@ class IID():
                 harmonics = np.arange(np.ceil(lower_freq/ion_rev_freq), np.floor(upper_freq/ion_rev_freq)+1).astype(int)
                 peak_width = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq * harmonics if self.gamma_setting != self.gamma_t else 1e-5 * self.delta_v_over_v * ion_rev_freq * harmonics
                 peak_sig = peak_width / 2 / np.sqrt(2 * np.log(2))
+                peak_max = ion_weight / peak_sig / np.sqrt(2*np.pi)
                 ion_pseudo_gamma_beta = self.Brho / mass * Q /self.c / self.u2kg * self.e
                 ion_pseudo_beta = ion_pseudo_gamma_beta / np.sqrt(1 + ion_pseudo_gamma_beta**2)
                 ion_pseudo_gamma = 1 / np.sqrt(1 - ion_pseudo_beta**2)
                 # filter harmonics
                 if len(harmonics) == 1:
-                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
+                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKMAX,PEAKSIG,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
                 elif len(harmonics) > 1:
-                    re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j], ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics))]
-                    self.cur.executemany("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
+                    re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j], peak_max[j], ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics))]
+                    self.cur.executemany("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
                 else:
                     pass
             i += 1
+        self.conn.commit()
+        # reset total yield for only .lpp result (containing bare, H-like, etc. but not containing isomers)
+        result = self.cur.execute("SELECT DISTINCT N, Z FROM ECOOLERION").fetchall()
+        result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND TYPE='bare' AND ISOMERIC='0'", _result).fetchone() for _result in result]
+        self.cur.executemany("UPDATE ECOOLERION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
         self.conn.commit()
 
     def update_gamma_t(self, gamma_t, ec_on=False):
@@ -277,15 +294,6 @@ class IID():
         using the specific span [kHz] to update whole data
         '''
         self.span = span # [kHz]
-        self.calc_isochronous_peak()
-        if ec_on:
-            self.calc_ecooler_peak()
-
-    def update_win_length(self, win_length, ec_on=False):
-        '''
-        using the specific window length to update whole data
-        '''
-        self.win_length = win_length
         self.calc_isochronous_peak()
         if ec_on:
             self.calc_ecooler_peak()
