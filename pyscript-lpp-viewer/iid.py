@@ -248,7 +248,7 @@ class IID():
                 ion_pseudo_gamma = 1 / np.sqrt(1 - ion_pseudo_beta**2)
                 # filter harmonics
                 if len(harmonics) == 1:
-                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKMAX,PEAKSIG,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
+                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
                 elif len(harmonics) > 1:
                     re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j], peak_max[j], ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics))]
                     self.cur.executemany("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)

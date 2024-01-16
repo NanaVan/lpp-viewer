@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from bokeh.plotting import figure, curdoc, show
-from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs
 from bokeh.events import ButtonClick
 from bokeh.layouts import layout, row, column
 from bokeh.palettes import YlOrRd9, YlGnBu9
@@ -29,10 +29,12 @@ class Bokeh_show():
         self._initial()
         self.iid.calc_ecooler_peak()
         self._initial_ec_on()
-        self.cooler_line_log.visible = False
-        self.cooler_line_linear.visible = False
-        self.p_table_cooler.visible = False
-        self.p_spectrum_linear.visible = False
+        self.tabs_main = Tabs(tabs=[self.tabpanel_ec_off, self.tabpanel_ec_on])
+        self.tabs_yield = Tabs(tabs=[self.tabpanel_yield_ec_off, self.tabpanel_yield_ec_on])
+        self.tabpanel_ec_on.disabled = False
+        self.tabpanel_yield_ec_on.disabled = False
+        self.p_spectrum_default_linear.visible = False
+        self.p_spectrum_cooler_linear.visible = False
         print('Bokeh: initial start')
 
     def _log(self, status):
@@ -64,18 +66,19 @@ class Bokeh_show():
         '''
         print('Bokeh: initial complete')
         self._log('Bokeh: initial complete')
-        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.p_yield]), self.p_spectrum_linear, self.p_spectrum_log, self.p_table_default, self.p_table_cooler])
+        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.tabs_yield]), self.tabs_main])
 
     def _wrap_data(self, data_type):
         '''
-        data_type: 1 for ISOCHRONOUSION, 0 for ECOOLERION
+        data_type: 1 for ISOCHRONOUSION, 0 for ECOOLERION, -1 for Null
         return data for plot and table
         '''
-        if data_type:
-            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
-        else:
-            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PSEUDOGAMMA FROM ECOOLERION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
-        data = {
+        if data_type != -1:
+            if data_type:
+                result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
+            else:
+                result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PSEUDOGAMMA FROM ECOOLERION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
+            data = {
                 'ion': [item[0] for item in result],
                 'element': [item[1] for item in result],
                 'N': [item[2] for item in result],
@@ -90,22 +93,24 @@ class Bokeh_show():
                 'total_yield': [item[11] for item in result],
                 'weight': [item[12] for item in result]
                 }
-        if len(data['ion']) == 0:
-            data['xs'] = []
-            data['ys'] = []
-            data['color'] = []
-        else:
-            yield_top = int(np.log10(np.max(data['total_yield'])))
-            data['xs'] = [np.concatenate([peak_loc-10**np.linspace(2,-8,21), np.array([peak_loc]), peak_loc+10**np.linspace(-8,2,21)]) for peak_loc in data['peak_loc']]
-            data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-(x - pos)**2/ 2 / sig**2) for x, amp, sig, pos in zip(data['xs'], data['weight'], data['peak_sig'], data['peak_loc'])]
-            if data_type:
-                data['color'] = [YlOrRd9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlOrRd9[-1] for item in data['total_yield']]
+            if len(data['ion']) == 0:
+                data['xs'] = []
+                data['ys'] = []
+                data['color'] = []
             else:
-                data['color'] = [YlGnBu9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlGnBu9[-1] for item in data['total_yield']]
-        if data_type:
-            data['gamma'] = [item[13] for item in result]
+                yield_top = int(np.log10(np.max(data['total_yield'])))
+                data['xs'] = [np.concatenate([peak_loc-10**np.linspace(2,-8,21), np.array([peak_loc]), peak_loc+10**np.linspace(-8,2,21)]) for peak_loc in data['peak_loc']]
+                data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-np.concatenate([-10**np.linspace(2,-8,21), np.array([0]), 10**np.linspace(-8,2,21)])**2/ 2 / sig**2) for amp, sig in zip(data['weight'], data['peak_sig'])]
+                if data_type:
+                    data['color'] = [YlOrRd9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlOrRd9[-1] for item in data['total_yield']]
+                else:
+                    data['color'] = [YlGnBu9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlGnBu9[-1] for item in data['total_yield']]
+            if data_type:
+                data['gamma'] = [item[13] for item in result]
+            else:
+                data['pseudo_gamma'] = [item[13] for item in result]
         else:
-            data['pseudo_gamma'] = [item[13] for item in result]
+            data = {'xs':[], 'ys':[], 'ion': [], 'element':[], 'N':[], 'Z':[], 'isometric': [], 'peak_loc': [], 'peak_sig': [], 'harmonic': [], 'rev_freq': [], 'half_life': [], 'yield': [], 'total_yield': [], 'weight': [], 'gamma': [], 'pseudo_gamma': []}
         return data
 
 
@@ -127,7 +132,7 @@ class Bokeh_show():
                 pass
 
         self.spectrum_source = ColumnDataSource(data=self._wrap_data(1))
-        self.ion_harmonics = ColumnDataSource(data={'xs': [], 'ys': [], 'ion': [], 'isometric': [], 'peak_loc': [], 'weight': [], 'yield': [], 'harmonic': [], 'rev_freq': [], 'half_life': []})
+        self.ion_harmonics = ColumnDataSource(data=self._wrap_data(-1))
         ion_tooltip = [
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("peak location", '@peak_loc'+' kHz'),
@@ -137,25 +142,30 @@ class Bokeh_show():
                 ("revolution frequency", '@rev_freq' + ' MHz'),
                 ("half life", '@half_life')
         ]
-        self.p_spectrum_log = figure(width=1000, height=300, title='Simulation Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
-        self.p_spectrum_log.tools[-1].tooltips=ion_tooltip            
-        self.p_spectrum_log.tools[-1].attachment = 'vertical'
-        self.p_spectrum_log.tools[-1].point_policy = 'follow_mouse'
-        self.p_spectrum_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.p_spectrum_log.yaxis.axis_label = "psd [arb. unit]"
-        self.p_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
-        self.p_spectrum_log.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
-        self.p_spectrum_linear = figure(width=1000, height=300, title='Simulation Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
-        self.p_spectrum_linear.tools[-1].tooltips=ion_tooltip            
-        self.p_spectrum_linear.tools[-1].attachment = 'vertical'
-        self.p_spectrum_linear.tools[-1].point_policy = 'follow_mouse'
-        self.p_spectrum_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.p_spectrum_linear.yaxis.axis_label = "psd [arb. unit]"
-        self.p_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
-        self.p_spectrum_linear.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
+        self.p_spectrum_default_log = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.p_spectrum_default_log.tools[-1].tooltips=ion_tooltip            
+        self.p_spectrum_default_log.tools[-1].attachment = 'vertical'
+        self.p_spectrum_default_log.tools[-1].point_policy = 'follow_mouse'
+        self.p_spectrum_default_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_default_log.yaxis.axis_label = "psd [arb. unit]"
+        self.p_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
+        self.p_spectrum_default_log.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
 
-        self.p_yield = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
-        self.p_yield.rect(x='N', y='Z', fill_color='color', source=self.spectrum_source, line_color='lightgray', width=1., height=1.)
+        self.p_spectrum_default_linear = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
+        self.p_spectrum_default_linear.tools[-1].tooltips=ion_tooltip            
+        self.p_spectrum_default_linear.tools[-1].attachment = 'vertical'
+        self.p_spectrum_default_linear.tools[-1].point_policy = 'follow_mouse'
+        self.p_spectrum_default_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_default_linear.yaxis.axis_label = "psd [arb. unit]"
+        self.p_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
+        self.p_spectrum_default_linear.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
+
+        self.p_yield_default = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.p_yield_default.rect(x='N', y='Z', fill_color='color', source=self.spectrum_source, line_color='lightgray', width=1., height=1.)
+        yield_top = int(np.log10(np.max(self.spectrum_source.data['total_yield'])))
+        self.default_colorBar = LogColorMapper(palette=YlOrRd9, high=10**(yield_top-8), low=10**(yield_top+1))
+        color_bar_default = ColorBar(color_mapper=self.default_colorBar)
+        self.p_yield_default.add_layout(color_bar_default, "left")
 
         self.spectrum_source.selected.on_change("indices", selected_ion)
 
@@ -170,14 +180,23 @@ class Bokeh_show():
                 TableColumn(field='rev_freq', title='rev freq [MHz]')
         ]
         self.p_table_default = DataTable(source=self.spectrum_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell.selected {background-color: #F1B6B9;}')])
+        # inital tabpanel
+        self.tabpanel_ec_off = TabPanel(child=column([self.p_spectrum_default_linear, self.p_spectrum_default_log, self.p_table_default]), title='EC OFF')
+        self.tabpanel_yield_ec_off = TabPanel(child=self.p_yield_default, title='EC OFF')
 
     def _update_spectrum_labels(self):
-        self.p_spectrum_log.x_range.start = -self.iid.span/2
-        self.p_spectrum_log.x_range.end = self.iid.span/2
-        self.p_spectrum_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.p_spectrum_linear.x_range.start = -self.iid.span/2
-        self.p_spectrum_linear.x_range.end = self.iid.span/2
-        self.p_spectrum_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_default_log.x_range.start = -self.iid.span/2
+        self.p_spectrum_default_log.x_range.end = self.iid.span/2
+        self.p_spectrum_default_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_default_linear.x_range.start = -self.iid.span/2
+        self.p_spectrum_default_linear.x_range.end = self.iid.span/2
+        self.p_spectrum_default_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_cooler_log.x_range.start = -self.iid.span/2
+        self.p_spectrum_cooler_log.x_range.end = self.iid.span/2
+        self.p_spectrum_cooler_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_cooler_linear.x_range.start = -self.iid.span/2
+        self.p_spectrum_cooler_linear.x_range.end = self.iid.span/2
+        self.p_spectrum_cooler_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
 
     def _initial_ec_on(self):
         def selected_ion(attr, old, new):
@@ -192,15 +211,50 @@ class Bokeh_show():
                 ion_index = [i for i, n in enumerate(self.cooler_source.data['ion']) if n == self.temp_ion]
                 iso_index = [i for i, n in enumerate(self.cooler_source.data['isometric']) if n == self.temp_isometric_state]
                 index = np.intersect1d(ion_index, iso_index)
-                self.ion_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
+                self.cooler_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
             except:
                 pass
 
         self.cooler_source = ColumnDataSource(data=self._wrap_data(0))
-        self.cooler_line_log = self.p_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.cooler_source, color="deepskyblue")
-        self.cooler_line_linear = self.p_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.cooler_source, color="deepskyblue")
+        self.cooler_harmonics = ColumnDataSource(data=self._wrap_data(-1))
+        ion_tooltip = [
+                ("ion", '@ion'+'('+'@isometric'+')'),
+                ("peak location", '@peak_loc'+' kHz'),
+                ("weight", '@weight'),
+                ("yield", '@yield'),
+                ("harmonic", '@harmonic'),
+                ("revolution frequency", '@rev_freq' + ' MHz'),
+                ("half life", '@half_life')
+        ]
+        self.p_spectrum_cooler_log = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.p_spectrum_cooler_log.tools[-1].tooltips=ion_tooltip            
+        self.p_spectrum_cooler_log.tools[-1].attachment = 'vertical'
+        self.p_spectrum_cooler_log.tools[-1].point_policy = 'follow_mouse'
+        self.p_spectrum_cooler_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_cooler_log.yaxis.axis_label = "psd [arb. unit]"
+        self.p_spectrum_cooler_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.cooler_source, color="deepskyblue")
+        self.p_spectrum_cooler_log.patches(xs='xs', ys='ys', source=self.cooler_harmonics, color='goldenrod')
+        self.p_spectrum_cooler_linear = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
+        self.p_spectrum_cooler_linear.tools[-1].tooltips=ion_tooltip            
+        self.p_spectrum_cooler_linear.tools[-1].attachment = 'vertical'
+        self.p_spectrum_cooler_linear.tools[-1].point_policy = 'follow_mouse'
+        self.p_spectrum_cooler_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
+        self.p_spectrum_cooler_linear.yaxis.axis_label = "psd [arb. unit]"
+        self.p_spectrum_cooler_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.cooler_source, color="deepskyblue")
+        self.p_spectrum_cooler_linear.patches(xs='xs', ys='ys', source=self.cooler_harmonics, color='goldenrod')
 
-        self.yield_cooler = self.p_yield.rect(x='N', y='Z', fill_color='color', source=self.cooler_source, line_color='lightgray', width=1., height=1.)
+        self.p_yield_cooler = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.p_yield_cooler.rect(x='N', y='Z', fill_color='color', source=self.cooler_source, line_color='lightgray', width=1., height=1.)
+        try:
+            yield_top = int(np.log10(np.max(self.cooler_source.data['total_yield'])))
+        except:
+            yield_top = 1
+        self.cooler_colorBar = LogColorMapper(palette=YlGnBu9, high=10**(yield_top-8), low=10**(yield_top+1))
+        color_bar_cooler = ColorBar(color_mapper=self.cooler_colorBar)
+        self.p_yield_cooler.add_layout(color_bar_cooler, "left")
+        
+        self.cooler_source.selected.on_change("indices", selected_ion)
+
         columns = [
                 TableColumn(field='ion', title='ion'),
                 TableColumn(field='isometric', title='isometric state'),
@@ -213,16 +267,25 @@ class Bokeh_show():
         ]
         self.cooler_source.selected.on_change("indices", selected_ion)
         self.p_table_cooler = DataTable(source=self.cooler_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-row.odd {background-color: #C5E6F9;} .slick-cell.selected {background-color: #CFF9A8;}')])
+        # inital tabpanel
+        self.tabpanel_ec_on = TabPanel(child=column([self.p_spectrum_cooler_linear, self.p_spectrum_cooler_log, self.p_table_cooler]), title='EC ON')
+        self.tabpanel_yield_ec_on = TabPanel(child=self.p_yield_cooler, title='EC ON')
 
     def _update(self, data_type=1):
         if data_type:
             data = self._wrap_data(1)
             self.spectrum_source.data = data
             self.p_table_default.source.data = data
+            yield_top = int(np.log10(np.max(data['total_yield'])))
+            self.default_colorBar.low = 10**(yield_top+1)
+            self.default_colorBar.high = 10**(yield_top-8)
         else:
             data = self._wrap_data(0)
             self.cooler_source.data = data 
             self.p_table_cooler.source.data = data
+            yield_top = int(np.log10(np.max(data['total_yield'])))
+            self.cooler_colorBar.low = 10**(yield_top+1)
+            self.cooler_colorBar.high = 10**(yield_top-8)
     
     def panel_control(self):
         '''
@@ -283,21 +346,13 @@ class Bokeh_show():
         self.button_set.on_event(ButtonClick, set_velocity)
         def set_ec_on(attr, old, new):
             if self.checkbox_ec_on.active:
-                self.p_table_cooler.visible = True
-                self.cooler_line_linear.visible = True
-                self.cooler_line_log.visible = True
                 self.input_gamma_setting.disabled = False
                 self.input_delta_v_over_v.disabled = False
                 self.button_set.disabled = False
-                self.yield_cooler.visible = True
             else:
-                self.p_table_cooler.visible = False
-                self.cooler_line_linear.visible = False
-                self.cooler_line_log.visible = False
                 self.input_gamma_setting.disabled = True
                 self.input_delta_v_over_v.disabled = True
                 self.button_set.disabled = True
-                self.yield_cooler.visible = False
         self.checkbox_ec_on.on_change('active', set_ec_on)
 
         # button for global setting
@@ -324,11 +379,15 @@ class Bokeh_show():
         self.input_delta_Brho_over_Brho.on_change('value', update_delta_Brho_over_Brho)
         def set_log(attr, old, new):
             if self.checkbox_log_or_linear.active:
-                self.p_spectrum_log.visible = True
-                self.p_spectrum_linear.visible = False
+                self.p_spectrum_default_log.visible = True
+                self.p_spectrum_default_linear.visible = False
+                self.p_spectrum_cooler_log.visible = True
+                self.p_spectrum_cooler_linear.visible = False
             else:
-                self.p_spectrum_log.visible = False
-                self.p_spectrum_linear.visible = True
+                self.p_spectrum_default_log.visible = False
+                self.p_spectrum_default_linear.visible = True
+                self.p_spectrum_cooler_log.visible = False
+                self.p_spectrum_cooler_linear.visible = True
         self.checkbox_log_or_linear.on_change('active', set_log)
 
         self.input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=240, high=246, mode='float', title='center frequency [MHz]')
@@ -370,7 +429,7 @@ class Bokeh_show():
                     if len(index) < 1:
                         self._log('no ion available in the spectrum!')
                         return
-                    self.ion_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
+                    self.cooler_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
                 else:
                     ion_index = [i for i, n in enumerate(self.spectrum_source.data['ion']) if n == ion]
                     iso_index = [i for i, n in enumerate(self.spectrum_source.data['isometric']) if n == isometric[:-1]]
@@ -381,7 +440,7 @@ class Bokeh_show():
                     self.ion_harmonics.data = {'xs': [self.spectrum_source.data['xs'][_index] for _index in index], 'ys': [self.spectrum_source.data['ys'][_index] for _index in index], 'ion': [self.spectrum_source.data['ion'][_index] for _index in index], 'isometric': [self.spectrum_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.spectrum_source.data['peak_loc'][_index] for _index in index], 'weight': [self.spectrum_source.data['weight'][_index] for _index in index], 'yield': [self.spectrum_source.data['yield'][_index] for _index in index], 'harmonic': [self.spectrum_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.spectrum_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.spectrum_source.data['half_life'][_index] for _index in index]}
         self.button_find_ion.on_event(ButtonClick, find_ion)
         def reset_ion():
-            self.ion_harmonics.data = {'xs': [], 'ys': [], 'ion': [], 'isometric': [], 'peak_loc': [], 'weight': [], 'yield': [], 'harmonic': [], 'rev_freq': [], 'half_life': []}
+            self.ion_harmonics.data = self._wrap_data(-1)
         self.button_reset_ion.on_event(ButtonClick, reset_ion)
 
         result = self.iid.cur.execute("SELECT min(PEAKMAX) FROM ISOCHRONOUSION").fetchone()[0]
