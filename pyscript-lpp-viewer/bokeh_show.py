@@ -134,6 +134,8 @@ class Bokeh_show():
         self.spectrum_source = ColumnDataSource(data=self._wrap_data(1))
         self.ion_harmonics = ColumnDataSource(data=self._wrap_data(-1))
         ion_tooltip = [
+                ("freq", '$x'+' kHz'),
+                ("psd", '$y'),
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("peak location", '@peak_loc'+' kHz'),
                 ("weight", '@weight'),
@@ -142,7 +144,7 @@ class Bokeh_show():
                 ("revolution frequency", '@rev_freq' + ' MHz'),
                 ("half life", '@half_life')
         ]
-        self.p_spectrum_default_log = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.p_spectrum_default_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
         self.p_spectrum_default_log.tools[-1].tooltips=ion_tooltip            
         self.p_spectrum_default_log.tools[-1].attachment = 'vertical'
         self.p_spectrum_default_log.tools[-1].point_policy = 'follow_mouse'
@@ -151,7 +153,7 @@ class Bokeh_show():
         self.p_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
         self.p_spectrum_default_log.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
 
-        self.p_spectrum_default_linear = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
+        self.p_spectrum_default_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
         self.p_spectrum_default_linear.tools[-1].tooltips=ion_tooltip            
         self.p_spectrum_default_linear.tools[-1].attachment = 'vertical'
         self.p_spectrum_default_linear.tools[-1].point_policy = 'follow_mouse'
@@ -162,7 +164,10 @@ class Bokeh_show():
 
         self.p_yield_default = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
         self.p_yield_default.rect(x='N', y='Z', fill_color='color', source=self.spectrum_source, line_color='lightgray', width=1., height=1.)
-        yield_top = int(np.log10(np.max(self.spectrum_source.data['total_yield'])))
+        try:
+            yield_top = int(np.log10(np.max(self.spectrum_source.data['total_yield'])))
+        except:
+            yield_top = 1
         self.default_colorBar = LogColorMapper(palette=YlOrRd9, high=10**(yield_top-8), low=10**(yield_top+1))
         color_bar_default = ColorBar(color_mapper=self.default_colorBar)
         self.p_yield_default.add_layout(color_bar_default, "left")
@@ -218,6 +223,8 @@ class Bokeh_show():
         self.cooler_source = ColumnDataSource(data=self._wrap_data(0))
         self.cooler_harmonics = ColumnDataSource(data=self._wrap_data(-1))
         ion_tooltip = [
+                ("freq", '$x'+' kHz'),
+                ("psd", '$y'),
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("peak location", '@peak_loc'+' kHz'),
                 ("weight", '@weight'),
@@ -226,7 +233,7 @@ class Bokeh_show():
                 ("revolution frequency", '@rev_freq' + ' MHz'),
                 ("half life", '@half_life')
         ]
-        self.p_spectrum_cooler_log = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.p_spectrum_cooler_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 1 sec)', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
         self.p_spectrum_cooler_log.tools[-1].tooltips=ion_tooltip            
         self.p_spectrum_cooler_log.tools[-1].attachment = 'vertical'
         self.p_spectrum_cooler_log.tools[-1].point_policy = 'follow_mouse'
@@ -234,7 +241,7 @@ class Bokeh_show():
         self.p_spectrum_cooler_log.yaxis.axis_label = "psd [arb. unit]"
         self.p_spectrum_cooler_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.cooler_source, color="deepskyblue")
         self.p_spectrum_cooler_log.patches(xs='xs', ys='ys', source=self.cooler_harmonics, color='goldenrod')
-        self.p_spectrum_cooler_linear = figure(width=1000, height=300, title='Simulated Spectrum', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
+        self.p_spectrum_cooler_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 1 sec)', tools='pan, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), output_backend='webgl')
         self.p_spectrum_cooler_linear.tools[-1].tooltips=ion_tooltip            
         self.p_spectrum_cooler_linear.tools[-1].attachment = 'vertical'
         self.p_spectrum_cooler_linear.tools[-1].point_policy = 'follow_mouse'
@@ -392,7 +399,7 @@ class Bokeh_show():
                 self.p_spectrum_cooler_linear.visible = True
         self.checkbox_log_or_linear.on_change('active', set_log)
 
-        self.input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=240, high=246, mode='float', title='center frequency [MHz]')
+        self.input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=20, high=450, mode='float', title='center frequency [MHz]')
         self.input_span = NumericInput(value=self.iid.span, height=50, low=10, high=20000, mode='float', title='span [kHz]')
         self.input_L_CSRe = NumericInput(value=self.iid.L_CSRe, height=50, low=10, high=400, mode='float', title='length of Ring [m]')
         def update_cen_freq(attr, old, new):
@@ -442,6 +449,7 @@ class Bokeh_show():
                         self._log('no ion available in the spectrum!')
                         return
                     self.cooler_harmonics.data = {'xs': [self.cooler_source.data['xs'][_index] for _index in index], 'ys': [self.cooler_source.data['ys'][_index] for _index in index], 'ion': [self.cooler_source.data['ion'][_index] for _index in index], 'isometric': [self.cooler_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.cooler_source.data['peak_loc'][_index] for _index in index], 'weight': [self.cooler_source.data['weight'][_index] for _index in index], 'yield': [self.cooler_source.data['yield'][_index] for _index in index], 'harmonic': [self.cooler_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.cooler_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.cooler_source.data['half_life'][_index] for _index in index]}
+                    self.cooler_source.selected.indices = [index[0]]
                 else:
                     ion_index = [i for i, n in enumerate(self.spectrum_source.data['ion']) if n == ion]
                     iso_index = [i for i, n in enumerate(self.spectrum_source.data['isometric']) if n == isometric[:-1]]
@@ -450,6 +458,7 @@ class Bokeh_show():
                         self._log('no ion available in the spectrum!')
                         return
                     self.ion_harmonics.data = {'xs': [self.spectrum_source.data['xs'][_index] for _index in index], 'ys': [self.spectrum_source.data['ys'][_index] for _index in index], 'ion': [self.spectrum_source.data['ion'][_index] for _index in index], 'isometric': [self.spectrum_source.data['isometric'][_index] for _index in index], 'peak_loc': [self.spectrum_source.data['peak_loc'][_index] for _index in index], 'weight': [self.spectrum_source.data['weight'][_index] for _index in index], 'yield': [self.spectrum_source.data['yield'][_index] for _index in index], 'harmonic': [self.spectrum_source.data['harmonic'][_index] for _index in index], 'rev_freq': [self.spectrum_source.data['rev_freq'][_index] for _index in index], 'half_life': [self.spectrum_source.data['half_life'][_index] for _index in index]}
+                    self.spectrum_source.selected.indices = [index[0]]
         self.button_find_ion.on_event(ButtonClick, find_ion)
         def reset_ion():
             self.ion_harmonics.data = self._wrap_data(-1)
@@ -466,4 +475,4 @@ class Bokeh_show():
         self.div_log = Div(text='', width=300, height=50, background='darkorange')
 
 if __name__ == '__main__':
-    curdoc().add_root(Bokeh_show('./GSI_133Sn_setting_v3.lpp', 243.5, 3000, 2.37, 0.4, 2.37)._show())
+    curdoc().add_root(Bokeh_show('./GSI_133Sn_setting_v3.lpp', 59., 1000, 2.37, 0.4, 2.37, 1e-6, 108.36)._show())
