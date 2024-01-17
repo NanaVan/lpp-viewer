@@ -298,6 +298,15 @@ class IID():
         if ec_on:
             self.calc_ecooler_peak()
 
+    def update_L_CSRe(self, L_CSRe, ec_on=False):
+        '''
+        using the specific length of Ring [m] to update whole data
+        '''
+        self.L_CSRe = L_CSRe # [m]
+        self.calc_isochronous_peak()
+        if ec_on:
+            self.calc_ecooler_peak()
+
     def calibrate_Brho(self, Brho, ec_on=False):
         '''
         using the measured Brho with the identified ion to calibrate

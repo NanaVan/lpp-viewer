@@ -66,7 +66,7 @@ class Bokeh_show():
         '''
         print('Bokeh: initial complete')
         self._log('Bokeh: initial complete')
-        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.tabs_yield]), self.tabs_main])
+        return column([row([column([row(self.input_cen_freq, self.input_span), self.input_L_CSRe, row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.tabs_yield]), self.tabs_main])
 
     def _wrap_data(self, data_type):
         '''
@@ -279,6 +279,7 @@ class Bokeh_show():
             yield_top = int(np.log10(np.max(data['total_yield'])))
             self.default_colorBar.low = 10**(yield_top+1)
             self.default_colorBar.high = 10**(yield_top-8)
+            self.ion_harmonics.data = self._wrap_data(-1)
         else:
             data = self._wrap_data(0)
             self.cooler_source.data = data 
@@ -286,6 +287,7 @@ class Bokeh_show():
             yield_top = int(np.log10(np.max(data['total_yield'])))
             self.cooler_colorBar.low = 10**(yield_top+1)
             self.cooler_colorBar.high = 10**(yield_top-8)
+            self.cooler_harmonics.data = self._wrap_data(-1)
     
     def panel_control(self):
         '''
@@ -392,6 +394,7 @@ class Bokeh_show():
 
         self.input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=240, high=246, mode='float', title='center frequency [MHz]')
         self.input_span = NumericInput(value=self.iid.span, height=50, low=10, high=20000, mode='float', title='span [kHz]')
+        self.input_L_CSRe = NumericInput(value=self.iid.L_CSRe, height=50, low=10, high=400, mode='float', title='length of Ring [m]')
         def update_cen_freq(attr, old, new):
             print('update center frequency ...')
             self.iid.update_cen_freq(float(new), self.checkbox_ec_on.active)
@@ -412,6 +415,15 @@ class Bokeh_show():
             print('update complete!')
             self._log('update complete!')
         self.input_span.on_change('value', update_span)
+        def update_L_CSRe(attr, old, new):
+            print('update length of Ring ...')
+            self.iid.update_L_CSRe(float(new), self.checkbox_ec_on.active)
+            self._update_spectrum_labels()
+            self._update(1)
+            if self.checkbox_ec_on.active:
+                self._update(0)
+            print('update complete!')
+        self.input_L_CSRe.on_change('value', update_L_CSRe)
 
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
         ion_completion = ["{:}({:})".format(ion, isometric) for ion, isometric in result]
