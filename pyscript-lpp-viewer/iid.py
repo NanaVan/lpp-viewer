@@ -19,7 +19,7 @@ class IID():
     time_unit = {'Yy': 31536000*1e24, 'Zy': 31536000*1e21, 'Ey': 31536000*1e18, 'Py': 31536000*1e15, 'Ty': 31536000*1e12, 'Gy': 31536000*1e9, 'My': 31536000*1e6, 'ky': 31536000*1e3, 'y': 31536000, 'd': 86400, 'h': 3600, 'm': 60, 's': 1, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9, 'ps': 1e-12, 'fs': 1e-15, 'as': 1e-18, 'zs': 1e-21, 'ys': 1e-24}
 
     
-    def __init__(self, lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8, nubase_update=False, verbose=False):
+    def __init__(self, lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
@@ -181,7 +181,7 @@ class IID():
         self.conn.commit()
         # reset total yield for only .lpp result (containing bare, H-like, etc. but not containing isomers)
         result = self.cur.execute("SELECT DISTINCT N, Z FROM ISOCHRONOUSION").fetchall()
-        result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND TYPE='bare' AND ISOMERIC='0'", _result).fetchone() for _result in result]
+        result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND ISOMERIC='0'", _result).fetchone() for _result in result]
         self.cur.executemany("UPDATE ISOCHRONOUSION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
         self.conn.commit()
                         
@@ -258,7 +258,7 @@ class IID():
         self.conn.commit()
         # reset total yield for only .lpp result (containing bare, H-like, etc. but not containing isomers)
         result = self.cur.execute("SELECT DISTINCT N, Z FROM ECOOLERION").fetchall()
-        result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND TYPE='bare' AND ISOMERIC='0'", _result).fetchone() for _result in result]
+        result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND ISOMERIC='0'", _result).fetchone() for _result in result]
         self.cur.executemany("UPDATE ECOOLERION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
         self.conn.commit()
 

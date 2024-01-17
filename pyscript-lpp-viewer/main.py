@@ -16,7 +16,7 @@ def process_file(event):
                     lpp.write(f)
         except:
             console.log('.lpp format error!')
-            pn.pane.Alert('## Alert\n### Some error may exist in your .lpp file. Please check your file first.\n\tFormat of .lpp is encoded as utf-8.', alert_type='danger').servable(target='fileShow')
+            pn.pane.Alert('## Alert\n### Some error may exist in your .lpp file. Please check your file first.\nFormat of .lpp is encoded as utf-8.', alert_type='danger').servable(target='fileShow')
             return
         try:
             console.log('Bokeh: loading...')
@@ -26,7 +26,7 @@ def process_file(event):
         except:
             console.log('.lpp file error!')
             #pn.state.notifications.warning('.lpp file format error! please check your file first.')
-            pn.pane.Alert('## Alert\n### Some error may exist in your .lpp file. Please check your file first.\n\tThere maybe some unknown ions (not included in AME2020) in .lpp file. \n\t(we will update our program in the future.)', alert_type='warning').servable(target='fileShow')
+            pn.pane.Alert('## Alert\n### Some error exist when parsing your .lpp file.\nYou can send your .lpp file to <u>wangqian2016@impcas.ac.cn</u> and ask for lpp-view issue solution.', alert_type='warning').servable(target='fileShow')
         
 #pn.extension(notifications=True)
 pn.extension()

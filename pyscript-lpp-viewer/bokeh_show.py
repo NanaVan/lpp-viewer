@@ -24,7 +24,7 @@ class Bokeh_show():
         n_peak:     number of peaks to be identified
         L_CSRe:     circumference of CSRe in m, default value 128.8
         '''
-        self.iid = IID(lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v, L_CSRe, False, False)
+        self.iid = IID(lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v, L_CSRe, False)
         self.panel_control()
         self._initial()
         self.iid.calc_ecooler_peak()
@@ -66,7 +66,7 @@ class Bokeh_show():
         '''
         print('Bokeh: initial complete')
         self._log('Bokeh: initial complete')
-        return column([row([column([row(self.input_cen_freq, self.input_span), self.input_L_CSRe, row([self.input_gamma_t, self.input_delta_Brho_over_Brho]), self.div_log, row([ self.input_gamma_setting, self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.tabs_yield]), self.tabs_main])
+        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_L_CSRe, self.input_delta_Brho_over_Brho]), row([self.input_gamma_t, self.input_alpha_p]), self.div_log, row([ self.input_gamma_setting, self.input_m_over_q]), row([self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), row([self.input_show_threshold, self.checkbox_log_or_linear])]), self.tabs_yield]), self.tabs_main])
 
     def _wrap_data(self, data_type):
         '''
@@ -134,8 +134,6 @@ class Bokeh_show():
         self.spectrum_source = ColumnDataSource(data=self._wrap_data(1))
         self.ion_harmonics = ColumnDataSource(data=self._wrap_data(-1))
         ion_tooltip = [
-                ("freq", '$x'+' kHz'),
-                ("psd", '$y'),
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("peak location", '@peak_loc'+' kHz'),
                 ("weight", '@weight'),
@@ -162,7 +160,7 @@ class Bokeh_show():
         self.p_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.spectrum_source, color="dimgray")
         self.p_spectrum_default_linear.patches(xs='xs', ys='ys', source=self.ion_harmonics, color='goldenrod')
 
-        self.p_yield_default = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.p_yield_default = figure(width=550, height=550, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
         self.p_yield_default.rect(x='N', y='Z', fill_color='color', source=self.spectrum_source, line_color='lightgray', width=1., height=1.)
         try:
             yield_top = int(np.log10(np.max(self.spectrum_source.data['total_yield'])))
@@ -223,8 +221,6 @@ class Bokeh_show():
         self.cooler_source = ColumnDataSource(data=self._wrap_data(0))
         self.cooler_harmonics = ColumnDataSource(data=self._wrap_data(-1))
         ion_tooltip = [
-                ("freq", '$x'+' kHz'),
-                ("psd", '$y'),
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("peak location", '@peak_loc'+' kHz'),
                 ("weight", '@weight'),
@@ -250,7 +246,7 @@ class Bokeh_show():
         self.p_spectrum_cooler_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.cooler_source, color="deepskyblue")
         self.p_spectrum_cooler_linear.patches(xs='xs', ys='ys', source=self.cooler_harmonics, color='goldenrod')
 
-        self.p_yield_cooler = figure(width=500, height=400, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.p_yield_cooler = figure(width=550, height=550, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
         self.p_yield_cooler.rect(x='N', y='Z', fill_color='color', source=self.cooler_source, line_color='lightgray', width=1., height=1.)
         try:
             yield_top = int(np.log10(np.max(self.cooler_source.data['total_yield'])))
@@ -343,6 +339,8 @@ class Bokeh_show():
         # button for ecooler
         self.checkbox_ec_on = Checkbox(label='EC on', height=20, active=False)
         self.input_gamma_setting = NumericInput(value=self.iid.gamma_setting, height=50, low=1.0001, high=5.0000, mode='float', title='γ setting', disabled=True)
+        m_over_q = self.iid.Brho / self.iid.gamma_setting / np.sqrt(1 - 1/self.iid.gamma_setting**2) / self.iid.c / self.iid.u2kg * self.iid.e
+        self.input_m_over_q = NumericInput(value=m_over_q, height=50, low=0., high=100., mode='float', title='m/q', disabled=True)
         self.input_delta_v_over_v = NumericInput(value=self.iid.delta_v_over_v, height=50, low=1e-8, high=1e-5, mode='float', title='Δv/v', disabled=True)
         self.button_set = Button(label='set', height=50, width=80, button_type='primary', disabled=True)
         def set_velocity():
@@ -353,22 +351,32 @@ class Bokeh_show():
                 print('calibrate complete!')
                 self._log('setting complete!')
         self.button_set.on_event(ButtonClick, set_velocity)
+        def set_gamma_setting(attr, old, new):
+            self.input_m_over_q.value = self.input_Brho.value / float(new) / np.sqrt(1 - 1/float(new)**2) / self.iid.c / self.iid.u2kg * self.iid.e
+        self.input_gamma_setting.on_change('value', set_gamma_setting)
+        def set_m_over_q(attr, old, new):
+            self.input_gamma_setting.value = np.sqrt(1 + (self.input_Brho.value / float(new) / self.iid.c / self.iid.u2kg * self.iid.e)**2)
+        self.input_m_over_q.on_change('value', set_m_over_q)
         def set_ec_on(attr, old, new):
             if self.checkbox_ec_on.active:
                 self.input_gamma_setting.disabled = False
+                self.input_m_over_q.disabled = False
                 self.input_delta_v_over_v.disabled = False
                 self.button_set.disabled = False
             else:
                 self.input_gamma_setting.disabled = True
+                self.input_m_over_q.disabled = True
                 self.input_delta_v_over_v.disabled = True
                 self.button_set.disabled = True
         self.checkbox_ec_on.on_change('active', set_ec_on)
 
         # button for global setting
         self.input_gamma_t = NumericInput(value=self.iid.gamma_t, height=50, low=1.0001, high=5.0000, mode='float', title='γt')
+        self.input_alpha_p = NumericInput(value=1/self.iid.gamma_t**2, height=50, low=0.04, high=0.99999, mode='float', title='αp')
         self.input_delta_Brho_over_Brho = NumericInput(value=self.iid.delta_Brho_over_Brho, height=50, low=0.01, high=10.00, mode='float', title='ΔΒρ/Βρ, %')
         self.checkbox_log_or_linear = Checkbox(label='log scale', height=20, active=True)
         def update_gamma_t(attr, old, new):
+            self.input_alpha_p.value = 1/float(new)**2
             print('update γt ...')
             self.iid.update_gamma_t(float(new), self.checkbox_ec_on.active)
             self._update(1)
@@ -377,6 +385,9 @@ class Bokeh_show():
             print('update complete!')
             self._log('update complete!')
         self.input_gamma_t.on_change('value', update_gamma_t)
+        def update_alpha_p(attr, old, new):
+            self.input_gamma_t.value = 1/np.sqrt(float(new))
+        self.input_alpha_p.on_change('value', update_alpha_p)
         def update_delta_Brho_over_Brho(attr, old, new):
             print('update ΔΒρ/Βρ ...')
             self.iid.update_delta_Brho_over_Brho(float(new), self.checkbox_ec_on.active)
@@ -475,4 +486,4 @@ class Bokeh_show():
         self.div_log = Div(text='', width=300, height=50, background='darkorange')
 
 if __name__ == '__main__':
-    curdoc().add_root(Bokeh_show('./GSI_133Sn_setting_v3.lpp', 59., 1000, 2.37, 0.4, 2.37, 1e-6, 108.36)._show())
+    curdoc().add_root(Bokeh_show('./GSI_238U.lpp', 59., 1000, 2.37, 0.4, 2.37, 1e-6, 108.36)._show())
