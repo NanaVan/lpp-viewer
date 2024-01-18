@@ -66,7 +66,7 @@ class IID():
                     break
             for line in lpp:
                 segment = line.strip().split(',')[0].split()
-                A, element, Q = re.split("([A-Z][a-z]?)", segment[0]+segment[1][:-1])
+                A, element, Q = re.split("([A-Z][a-z]?)", segment[0]+segment[-2][:-1])
                 self.cur.execute("INSERT INTO LPPDATA (A,ELEMENT,Q,ION,YIELD) VALUES (?,?,?,?,?)", (A, element, Q, ''.join([A,element,Q]), segment[-1][1:]))
             self.conn.commit()
         # reset yield for both fission (including pps for AFhihg, AFmid and AFlow) and PF processing
