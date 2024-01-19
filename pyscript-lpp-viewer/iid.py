@@ -116,9 +116,9 @@ class IID():
         self.cur.executemany("UPDATE OBSERVEDION SET YIELD=? WHERE ION=? AND ISOMERIC=?", re_set)
         self.conn.commit()
 
-    def calc_isochronous_peak(self):
+    def calc_isochronous_peak(self, update_TOF=True):
         '''
-        calculate peak locations of the Schottky signals from secondary fragments visible in the pre-defined frequency range (isochronous mode)
+        calculate peak locations of the Schottky signals and ToF signals from secondary fragments visible in the pre-defined frequency range (isochronous mode)
         gamma_t:                the gamma_t value for isochronous mode
         delta_Brho_over_Brho:   the ΔBrho/Brho for isochronous mode, [%]
         '''
@@ -148,6 +148,29 @@ class IID():
                 HALFLIFE    TEXT,
                 WEIGHT      REAL);''')
         self.conn.commit()
+        if update_TOF:
+            self.cur.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='TOFION'")
+            if self.cur.fetchone()[0] == 1:
+                self.cur.execute("DROP TABLE TOFION")
+                self.conn.commit()
+            self.cur.execute('''CREATE TABLE IF NOT EXISTS TOFION
+                    (ION         TEXT        NOT NULL,
+                    ElEMENT     CHAR(2)     NOT NULL,
+                    Z           INT         NOT NULL,
+                    N           INT         NOT NULL,
+                    ISOMERIC    CHAR(1),
+                    MASS        DOUBLE,
+                    GAMMA       REAL,
+                    SOURCE      TEXT,                
+                    YIELD       REAL,
+                    TOTALYIELD  REAL,
+                    PEAKSIG     REAL,
+                    PEAKMAX     REAL,
+                    REVTIME     REAL,     
+                    TYPE        TEXT,
+                    HALFLIFE    TEXT);''')
+            self.conn.commit()
+
         self.cur.execute("SELECT MASS, Q, YIELD, ION, ISOMERIC FROM OBSERVEDION")
         mass, Q, ion_yield, ion, isometric_state = np.array(self.cur.fetchall()).T
         mass, Q, ion_yield = mass.astype(np.float64), Q.astype(np.float64), ion_yield.astype(np.float64)
@@ -156,6 +179,7 @@ class IID():
         gamma = 1 / np.sqrt(1 - beta**2)
         #energy = (gamma - 1) / self.MeV2u # MeV/u
         rev_freq = beta * self.c / self.L_CSRe * 1e-6 # MHz
+        rev_time = self.L_CSRe / beta / self.c * 1e9 # ns
         weight = ion_yield * Q**2 * rev_freq**2
         lower_freq, upper_freq = self.cen_freq - self.span/2e3, self.cen_freq + self.span/2e3 # MHz, MHz
         i = 0
@@ -166,9 +190,12 @@ class IID():
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
-            peak_width = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics
-            peak_sig = peak_width / 2 / np.sqrt(2 * np.log(2))
+            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics / 2 / np.sqrt(2 * np.log(2))
+            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))
             peak_max = weight[i] / peak_sig / np.sqrt(2*np.pi)
+            rev_time_peak_max = ion_yield[i] / rev_time_peak_sig / np.sqrt(2*np.pi)
+            if update_TOF:
+                self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
             # filter harmonics
             if len(harmonics) == 1:
                 self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], rev_freq[i], int(harmonics[-1])))
@@ -184,6 +211,11 @@ class IID():
         result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND ISOMERIC='0'", _result).fetchone() for _result in result]
         self.cur.executemany("UPDATE ISOCHRONOUSION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
         self.conn.commit()
+        if update_TOF:
+            result = self.cur.execute("SELECT DISTINCT N, Z FROM TOFION").fetchall()
+            result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND ISOMERIC='0'", _result).fetchone() for _result in result]
+            self.cur.executemany("UPDATE TOFION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
+            self.conn.commit()
                         
     def calc_ecooler_peak(self):
         '''
@@ -280,7 +312,7 @@ class IID():
         if ec_on:
             self.calc_ecooler_peak()
 
-    def update_cen_freq(self, cen_freq, ec_on=False):
+    def update_cen_freq(self, cen_freq, ec_on=False, update_TOF=False):
         '''
         using the specific center frequency [MHz] to update whole data
         '''
@@ -289,7 +321,7 @@ class IID():
         if ec_on:
             self.calc_ecooler_peak()
 
-    def update_span(self, span, ec_on=False):
+    def update_span(self, span, ec_on=False, update_TOF=False):
         '''
         using the specific span [kHz] to update whole data
         '''
