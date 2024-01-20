@@ -192,15 +192,14 @@ class IID():
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
             peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics / 2 / np.sqrt(2 * np.log(2))
             rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))
-            peak_max = weight[i] / peak_sig / np.sqrt(2*np.pi)
             rev_time_peak_max = ion_yield[i] / rev_time_peak_sig / np.sqrt(2*np.pi)
             if update_TOF:
                 self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
             # filter harmonics
-            if len(harmonics) == 1:
-                self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], rev_freq[i], int(harmonics[-1])))
+            if len(harmonics) == 1 and harmonics[-1] > 0:
+                self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], weight[i]/peak_sig[-1]/np.sqrt(2*np.pi), rev_freq[i], int(harmonics[-1])))
             elif len(harmonics) > 1:
-                re_set = [(*temp, gamma[i], weight[i], (harmonics[j]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[j], peak_max[j], rev_freq[i], int(harmonics[j])) for j in range(len(harmonics))]
+                re_set = [(*temp, gamma[i], weight[i], (harmonics[j]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[j], weight[i]/peak_sig[j]/np.sqrt(2*np.pi), rev_freq[i], int(harmonics[j])) for j in range(len(harmonics)) if int(harmonics[j]) > 0]
                 self.cur.executemany("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
             else:
                 pass
@@ -274,15 +273,14 @@ class IID():
                 harmonics = np.arange(np.ceil(lower_freq/ion_rev_freq), np.floor(upper_freq/ion_rev_freq)+1).astype(int)
                 peak_width = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq * harmonics if self.gamma_setting != self.gamma_t else 1e-5 * self.delta_v_over_v * ion_rev_freq * harmonics
                 peak_sig = peak_width / 2 / np.sqrt(2 * np.log(2))
-                peak_max = ion_weight / peak_sig / np.sqrt(2*np.pi)
                 ion_pseudo_gamma_beta = self.Brho / mass * Q /self.c / self.u2kg * self.e
                 ion_pseudo_beta = ion_pseudo_gamma_beta / np.sqrt(1 + ion_pseudo_gamma_beta**2)
                 ion_pseudo_gamma = 1 / np.sqrt(1 - ion_pseudo_beta**2)
                 # filter harmonics
-                if len(harmonics) == 1:
-                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], peak_max[-1], ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
+                if len(harmonics) == 1 and harmonics[-1] > 0:
+                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], ion_weight/peak_sig[-1]/np.sqrt(2*np.pi), ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
                 elif len(harmonics) > 1:
-                    re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j], peak_max[j], ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics))]
+                    re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j], ion_weight/peak_sig[j]/np.sqrt(2*np.pi), ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics)) if int(harmonics[j])>0]
                     self.cur.executemany("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
                 else:
                     pass

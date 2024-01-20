@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from bokeh.plotting import figure, curdoc, show
-from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs, LabelSet
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs, LabelSet, Select
 from bokeh.events import ButtonClick
 from bokeh.layouts import layout, row, column
 from bokeh.palettes import YlOrRd9, YlGnBu9
@@ -30,6 +30,8 @@ class Bokeh_show():
         self._initial_RevTime_spectrum()
         self.iid.calc_ecooler_peak()
         self._initial_ec_on()
+        harmonic_values, harmonic_counts = np.unique(self.spectrum_source.data['harmonic'], return_counts=True)
+        self.select_harmonic.options = harmonic_values.astype(str).tolist()
         self.tabs_main = Tabs(tabs=[self.tabpanel_ec_off, self.tabpanel_ec_on, self.tabpanel_TOF])
         self.tabs_yield = Tabs(tabs=[self.tabpanel_yield_ec_off, self.tabpanel_yield_ec_on, self.tabpanel_yield_TOF])
         self.p_spectrum_default_linear.visible = False
@@ -69,18 +71,25 @@ class Bokeh_show():
         '''
         print('Bokeh: initial complete')
         self._log('Bokeh: initial complete')
-        return column([row([column([row(self.input_cen_freq, self.input_span), row([self.input_L_CSRe, self.input_delta_Brho_over_Brho]), row([self.input_gamma_t, self.input_alpha_p]), self.div_log, row([ self.input_gamma_setting, self.input_m_over_q]), row([self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), self.checkbox_TOF_on, row([self.input_show_threshold, self.checkbox_log_or_linear, self.checkbox_labels_on])]), self.tabs_yield]), self.tabs_main])
+        return column([row([column([row(self.input_cen_freq, self.input_span), self.input_loc_osil, row([self.input_L_CSRe, self.input_delta_Brho_over_Brho]), row([self.input_gamma_t, self.input_alpha_p]), self.div_log, row([ self.input_gamma_setting, self.input_m_over_q]), row([self.input_delta_v_over_v, self.button_set]), self.checkbox_ec_on, row([self.input_Brho, self.input_peakloc, self.button_calibrate]), self.checkbox_Brho_input, row([self.input_ion, self.button_find_ion, self.button_reset_ion]), self.checkbox_TOF_on, row([self.input_show_threshold, self.checkbox_log_or_linear, self.checkbox_labels_on]), row([self.checkbox_show_one_harmonic, self.select_harmonic])]), self.tabs_yield]), self.tabs_main])
+        
 
-    def _wrap_data(self, data_type):
+    def _wrap_data(self, data_type, harmonic=None):
         '''
         data_type: 1 for ISOCHRONOUSION, 0 for ECOOLERION, -1 for Null, -2 for TOFION
         return data for plot and table
         '''
         if data_type > -1:
-            if data_type:
-                result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
+            if harmonic is None:
+                if data_type:
+                    result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
+                else:
+                    result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, PSEUDOGAMMA FROM ECOOLERION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
             else:
-                result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, PSEUDOGAMMA FROM ECOOLERION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
+                if data_type:
+                    result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=? AND HARMONIC=?", (self.input_show_threshold.value, harmonic)).fetchall()
+                else:
+                    result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, PSEUDOGAMMA FROM ECOOLERION WHERE PEAKMAX>=? AND HARMONIC=?", (self.input_show_threshold.value, harmonic)).fetchall()
             data = {
                 'ion': [item[0] for item in result],
                 'element': [item[1] for item in result],
@@ -115,7 +124,7 @@ class Bokeh_show():
             else:
                 data['pseudo_gamma'] = [item[14] for item in result]
         elif data_type < -1:
-            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKSIG, REVTIME, HALFLIFE, YIELD, TOTALYIELD, GAMMA, PEAKMAX FROM TOFION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
+            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKSIG, REVTIME, HALFLIFE, YIELD, TOTALYIELD, GAMMA, PEAKMAX, SOURCE, TYPE FROM TOFION WHERE PEAKMAX>=?", (self.input_show_threshold.value,)).fetchall()
             data = {
                 'ion': [item[0] for item in result],
                 'element': [item[1] for item in result],
@@ -129,6 +138,8 @@ class Bokeh_show():
                 'total_yield': [item[9] for item in result],
                 'gamma': [item[10] for item in result],
                 'peak_max': [item[11] for item in result],
+                'source': [item[12] for item in result],
+                'type': [item[13] for item in result],
                 'ion_label': [item[0]+'('+item[4]+')' for item in result]
                 }
             if len(data['ion']) == 0:
@@ -137,6 +148,8 @@ class Bokeh_show():
             else:
                 data['xs'] = [np.concatenate([rev_time-10**np.linspace(1,-8,31), np.array([rev_time]), rev_time+10**np.linspace(-8,1,31)]) for rev_time in data['rev_time']]
                 data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-np.concatenate([-10**np.linspace(1,-8,31), np.array([0]), 10**np.linspace(-8,1,31)])**2/ 2 / sig**2) for amp, sig in zip(data['yield'], data['peak_sig'])]
+                #data['xs'] = np.tile(np.concatenate([np.arange(np.min(data['rev_time']), np.max(data['rev_time']), step=0.02), np.array([np.min(data['rev_time'])])]), (len(data['ion']),1)).tolist()
+                #data['ys'] = [amp / sig / np.sqrt(2*np.pi) * np.exp(-(np.array(x) - rev_time)**2 / 2 / sig**2) for amp, sig, rev_time, x in zip(data['yield'], data['peak_sig'], data['rev_time'], data['xs'])]
                 yield_top = int(np.log10(np.max(data['total_yield'])))
                 if data_type:
                     data['color'] = [YlOrRd9[yield_top-int(np.log10(item))] if yield_top-int(np.log10(item))<=8 else YlOrRd9[-1] for item in data['total_yield']]
@@ -145,6 +158,7 @@ class Bokeh_show():
         else:
             data = {'xs':[], 'ys':[], 'ion': [], 'element':[], 'N':[], 'Z':[], 'isometric': [], 'peak_loc': [], 'peak_sig': [], 'harmonic': [], 'rev_freq': [], 'rev_time': [], 'half_life': [], 'yield': [], 'total_yield': [], 'weight': [], 'gamma': [], 'pseudo_gamma': []}
         return data
+
 
 
     def _initial(self):
@@ -230,7 +244,9 @@ class Bokeh_show():
                 ("ion", '@ion'+'('+'@isometric'+')'),
                 ("yield", '@yield'),
                 ("revolution time", '@rev_time' + ' ns'),
-                ("half life", '@half_life')
+                ("half life", '@half_life'),
+                ("type", '@type'),
+                ("source", '@source')
         ]
         self.p_spectrum_TOF_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', y_axis_type='log', output_backend='webgl')
         self.p_spectrum_TOF_log.tools[-1].tooltips=ion_tooltip            
@@ -269,7 +285,9 @@ class Bokeh_show():
                 TableColumn(field='isometric', title='isometric state'),
                 TableColumn(field='half_life', title='half life'),
                 TableColumn(field='yield', title='yield'),
-                TableColumn(field='rev_time', title='rev time [ns]')
+                TableColumn(field='rev_time', title='rev time [ns]'),
+                TableColumn(field='type', title='ion type'),
+                TableColumn(field='source', title='mass source')
         ]
         self.p_table_TOF = DataTable(source=self.TOF_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell.selected {background-color: #F1B6B9;}')])
         # inital tabpanel
@@ -367,30 +385,55 @@ class Bokeh_show():
         self.tabpanel_ec_on = TabPanel(child=column([self.p_spectrum_cooler_linear, self.p_spectrum_cooler_log, self.p_table_cooler]), title='EC ON')
         self.tabpanel_yield_ec_on = TabPanel(child=self.p_yield_cooler, title='EC ON')
 
-    def _update(self, data_type=1):
-        if data_type == 1:
-            data = self._wrap_data(1)
-            self.spectrum_source.data = data
-            self.p_table_default.source.data = data
-            yield_top = int(np.log10(np.max(data['total_yield'])))
-            self.default_colorBar.low = 10**(yield_top+1)
-            self.default_colorBar.high = 10**(yield_top-8)
-            self.ion_harmonics.data = self._wrap_data(-1)
-        elif data_type == 0:
-            data = self._wrap_data(0)
-            self.cooler_source.data = data 
-            self.p_table_cooler.source.data = data
-            yield_top = int(np.log10(np.max(data['total_yield'])))
-            self.cooler_colorBar.low = 10**(yield_top+1)
-            self.cooler_colorBar.high = 10**(yield_top-8)
-            self.cooler_harmonics.data = self._wrap_data(-1)
+    def _update(self, data_type=1, harmonic=None):
+        if harmonic is None:
+            if data_type == 1:
+                data = self._wrap_data(1)
+                self.spectrum_source.data = data
+                self.p_table_default.source.data = data
+                yield_top = int(np.log10(np.max(data['total_yield'])))
+                self.default_colorBar.low = 10**(yield_top+1)
+                self.default_colorBar.high = 10**(yield_top-8)
+                self.ion_harmonics.data = self._wrap_data(-1)
+                harmonic_values, harmonic_counts = np.unique(self.spectrum_source.data['harmonic'], return_counts=True)
+                self.select_harmonic.options = harmonic_values.astype(str).tolist()
+            elif data_type == 0:
+                data = self._wrap_data(0)
+                self.cooler_source.data = data 
+                self.p_table_cooler.source.data = data
+                yield_top = int(np.log10(np.max(data['total_yield'])))
+                self.cooler_colorBar.low = 10**(yield_top+1)
+                self.cooler_colorBar.high = 10**(yield_top-8)
+                self.cooler_harmonics.data = self._wrap_data(-1)
+                try:
+                    harmonic_values, harmonic_counts = np.unique(self.cooler_source.data['harmonic'], return_counts=True)
+                    self.select_harmonic.options = harmonic_values.astype(str).tolist()
+                except:
+                    self.select_harmonic.options = []
+            else:
+                data = self._wrap_data(-2)
+                self.TOF_source.data = data
+                self.p_table_TOF.source.data = data
+                yield_top = int(np.log10(np.max(data['total_yield'])))
+                self.TOF_colorBar.low = 10**(yield_top+1)
+                self.TOF_colorBar.high = 10**(yield_top-8)
         else:
-            data = self._wrap_data(-2)
-            self.TOF_source.data = data
-            self.p_table_TOF.source.data = data
-            yield_top = int(np.log10(np.max(data['total_yield'])))
-            self.TOF_colorBar.low = 10**(yield_top+1)
-            self.TOF_colorBar.high = 10**(yield_top-8)
+            if data_type:
+                data = self._wrap_data(1, harmonic)
+                self.spectrum_source.data = data
+                self.p_table_default.source.data = data
+                yield_top = int(np.log10(np.max(data['total_yield'])))
+                self.default_colorBar.low = 10**(yield_top+1)
+                self.default_colorBar.high = 10**(yield_top-8)
+                self.ion_harmonics.data = self._wrap_data(-1)
+            else:
+                data = self._wrap_data(0, harmonic)
+                self.cooler_source.data = data 
+                self.p_table_cooler.source.data = data
+                yield_top = int(np.log10(np.max(data['total_yield'])))
+                self.cooler_colorBar.low = 10**(yield_top+1)
+                self.cooler_colorBar.high = 10**(yield_top-8)
+                self.cooler_harmonics.data = self._wrap_data(-1)
     
     def panel_control(self):
         '''
@@ -409,6 +452,8 @@ class Bokeh_show():
             self._update(1)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
             print('calibrate complete!')
             self._log('calibrate complete!')
         self.input_Brho.on_change('value', update_Brho_log, update_Brho)
@@ -448,6 +493,8 @@ class Bokeh_show():
                 print('calibrate Δv/v ...')
                 self.iid.calibrate_ecooler(self.input_gamma_setting.value, self.input_delta_v_over_v.value)
                 self._update(0)
+                if self.checkbox_show_one_harmonic.active:
+                    self.select_harmonic.value = self.select_harmonic.options[0]
                 print('calibrate complete!')
                 self._log('setting complete!')
         self.button_set.on_event(ButtonClick, set_velocity)
@@ -468,6 +515,8 @@ class Bokeh_show():
                 self.input_m_over_q.disabled = True
                 self.input_delta_v_over_v.disabled = True
                 self.button_set.disabled = True
+                harmonic_values, harmonic_counts = np.unique(self.spectrum_source.data['harmonic'], return_counts=True)
+                self.select_harmonic.options = harmonic_values.astype(str).tolist()
         self.checkbox_ec_on.on_change('active', set_ec_on)
 
         # button for global setting
@@ -483,6 +532,8 @@ class Bokeh_show():
             self._update(-2)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
             print('update complete!')
             self._log('update complete!')
         self.input_gamma_t.on_change('value', update_gamma_t)
@@ -496,6 +547,8 @@ class Bokeh_show():
             self._update(-2)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
             print('update complete!')
             self._log('update complete!')
         self.input_delta_Brho_over_Brho.on_change('value', update_delta_Brho_over_Brho)
@@ -516,19 +569,26 @@ class Bokeh_show():
                 self.p_spectrum_TOF_linear.visible = True
         self.checkbox_log_or_linear.on_change('active', set_log)
 
-        self.input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=20, high=450, mode='float', title='center frequency [MHz]')
+        self.input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=0.005, high=450, mode='float', title='center frequency [MHz]')
+        self.input_loc_osil = NumericInput(value=self.iid.cen_freq-self.iid.span/2e3, height=50, low=0, high=449.995, mode='float', title='local osillator [MHz]')
         self.input_span = NumericInput(value=self.iid.span, height=50, low=10, high=20000, mode='float', title='span [kHz]')
         self.input_L_CSRe = NumericInput(value=self.iid.L_CSRe, height=50, low=10, high=400, mode='float', title='length of Ring [m]')
         def update_cen_freq(attr, old, new):
+            self.input_loc_osil.value = float(new) - float(self.input_span.value) / 2e3
             print('update center frequency ...')
             self.iid.update_cen_freq(float(new), self.checkbox_ec_on.active)
             self._update_spectrum_labels()
             self._update(1)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
             print('update complete!')
             self._log('update complete!')
         self.input_cen_freq.on_change('value', update_cen_freq)
+        def update_loc_osil(attr, old, new):
+            self.input_cen_freq.value = float(new) + float(self.input_span.value) / 2e3
+        self.input_loc_osil.on_change('value', update_loc_osil)
         def update_span(attr, old, new):
             print('update span ...')
             self.iid.update_span(float(new), self.checkbox_ec_on.active)
@@ -536,6 +596,8 @@ class Bokeh_show():
             self._update(1)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
             print('update complete!')
             self._log('update complete!')
         self.input_span.on_change('value', update_span)
@@ -547,6 +609,8 @@ class Bokeh_show():
             self._update(-2)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
             print('update complete!')
         self.input_L_CSRe.on_change('value', update_L_CSRe)
 
@@ -596,11 +660,19 @@ class Bokeh_show():
             if self.checkbox_TOF_on.active:
                 self.checkbox_Brho_input.active = True
                 self.input_cen_freq.disabled = True
+                self.input_loc_osil.disabled = True
                 self.input_span.disabled = True
+                self.select_harmonic.disabled = True
+                self.checkbox_show_one_harmonic.disabled = True
+                self.checkbox_ec_on.disabled = True
             else:
                 self.checkbox_Brho_input.active = False
                 self.input_cen_freq.disabled = False
+                self.input_loc_osil.disabled = False
                 self.input_span.disabled = False
+                self.select_harmonic.disabled = False
+                self.checkbox_show_one_harmonic.disabled = False
+                self.checkbox_ec_on.disabled = False
         self.checkbox_TOF_on.on_change('active', set_TOF_on)
 
         #result = self.iid.cur.execute("SELECT min(PEAKMAX) FROM ISOCHRONOUSION").fetchone()[0]
@@ -611,6 +683,8 @@ class Bokeh_show():
             self._update(-2)
             if self.checkbox_ec_on.active:
                 self._update(0)
+            if self.checkbox_show_one_harmonic.active:
+                self.select_harmonic.value = self.select_harmonic.options[0]
         self.input_show_threshold.on_change('value', set_threshold)
         def set_labels_on(attr, old, new):
             if self.checkbox_labels_on.active:
@@ -622,6 +696,30 @@ class Bokeh_show():
                 self.labels_cooler.visible = False
                 self.labels_TOF.visible = False
         self.checkbox_labels_on.on_change('active', set_labels_on)
+
+        # show only one harmonic
+        self.select_harmonic = Select(title='harmonic:', value='', options=[])
+        self.checkbox_show_one_harmonic = Checkbox(label='show one', height=50, active=False)
+        def show_one_harmonic(attr, old, new):
+            if self.checkbox_show_one_harmonic.active:
+                try:
+                    self._update(1, int(self.select_harmonic.value))
+                    if self.checkbox_ec_on.active:
+                        self._update(0, int(self.select_harmonic.value))
+                except:
+                    self._log("You have not selected a specific harmonic yet!")
+            else:
+                self._update(1)
+                if self.checkbox_ec_on.active:
+                    self._update(0)
+        self.checkbox_show_one_harmonic.on_change('active', show_one_harmonic)
+        def change_harmonic(attr, old, new):
+            if self.checkbox_show_one_harmonic.active:
+                self._update(1, int(self.select_harmonic.value))
+                if self.checkbox_ec_on.active:
+                    self._update(0, int(self.select_harmonic.value))
+        self.select_harmonic.on_change('value', change_harmonic)
+                
         
         self.div_log = Div(text='', width=300, height=50, background='darkorange')
 
