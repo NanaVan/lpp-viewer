@@ -20,7 +20,7 @@ def process_file(event):
             return
         try:
             console.log('Bokeh: loading...')
-            show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 1.30, 0.2, 1.30)._show()
+            show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 1.30, 0.2, 1.30)._show()
             console.log('Bokeh: complete')
             pn.pane.Alert('## Info\n### The current interface is for functional testing only. \n### Please wait for the final version.').servable(target='testShow')
             pn.pane.Bokeh(show_Bokeh).servable(target='fileShow')

@@ -15,7 +15,7 @@ class Bokeh_show():
     '''
     A bokeh to show the yield/weight heatmap with corresponding revolution and spectrum figure
     '''
-    def __init__(self, lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8):
+    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
@@ -25,7 +25,7 @@ class Bokeh_show():
         n_peak:     number of peaks to be identified
         L_CSRe:     circumference of CSRe in m, default value 128.8
         '''
-        self.iid = IID(lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v, L_CSRe, False)
+        self.iid = IID(lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v, L_CSRe, False)
         print('Bokeh: initial start')
         self._panel_Schottky()
         self._panel_TOF()
@@ -50,18 +50,13 @@ class Bokeh_show():
         x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[0]])])
         threshold = 1e-12
         x_start, x_end = peak_loc - np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area)), peak_loc + np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area))
-        if x_end - x_start < x_range[1] - x_range[0]:
-            index = np.searchsorted(x_reset, x_start)
-            xs = np.array([x_reset[index-1], x_reset[index], x_reset[index], x_reset[index-1], x_reset[index-1]])
-            ys = np.array([y_value[index-1], y_value[index-1], threshold, threshold, threshold])
-            return xs, ys, y_value
-        start_index = np.searchsorted(x_range, x_start, side='left')
-        end_index = np.searchsorted(x_range, x_end, side='left')
-        start_index = start_index - 1 if x_range[start_index] < x_start else start_index
-        end_index = end_index if x_range[end_index] < x_end else end_index + 1
+        start_index = np.searchsorted(x_reset, x_start) - 1
+        start_index = 0 if start_index < 0 else start_index
+        end_index = np.searchsorted(x_reset, x_end)
+        end_index = len(x_range) if end_index == len(x_reset) else end_index
         ys = y_value[start_index:end_index]
         xs = x_reset[start_index:end_index+1]
-        ys = np.concatenate([np.tile(ys.reshape(-1), (2,1)).T.reshape(-1), np.array([threshold , threshold, ys[0]])])
+        ys = np.concatenate([np.tile(ys.reshape(-1), (2,1)).T.reshape(-1), np.array([threshold, threshold, ys[0]])])
         xs = np.concatenate([np.tile(xs.reshape(-1), (2,1)).T.reshape(-1)[1:], np.array([xs[0], xs[0]])])
         return xs, ys, y_value
     
@@ -130,7 +125,7 @@ class Bokeh_show():
                 data['pseudo_gamma'] = [item[14] for item in result]
             return data, line
         elif data_type == 'TOF':
-            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKSIG, REVTIME, HALFLIFE, YIELD, TOTALYIELD, GAMMA, PEAKMAX, SOURCE, TYPE FROM TOFION WHERE PEAKMAX>=? AND REVTIME>? AND REVTIME<?", (self.TOF_input_show_threshold.value, self.TOF_input_x_start.value, self.TOF_input_x_end.value)).fetchall()
+            result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKSIG, REVTIME, HALFLIFE, YIELD, TOTALYIELD, GAMMA, PEAKMAX, SOURCE, TYPE FROM TOFION WHERE PEAKMAX>=?", (self.TOF_input_show_threshold.value,)).fetchall()
             data = {
                 'ion': [item[0] for item in result],
                 'element': [item[1] for item in result],
@@ -161,7 +156,7 @@ class Bokeh_show():
                 line['x'] = []
                 line['y'] = []
             else:
-                x_range = np.arange(float(self.TOF_input_x_start.value), float(self.TOF_input_x_end.value), step=0.02)
+                x_range = np.arange(500, 800, step=0.002)
                 xs, ys, y = [], [], []
                 for peak_area, peak_sig, peak_loc in zip(data['yield'], data['peak_sig'], data['rev_time']):
                     temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig, peak_area, x_range)
@@ -369,7 +364,7 @@ class Bokeh_show():
         self.Schottky_input_loc_osil = NumericInput(value=self.iid.cen_freq-self.iid.span/2e3, height=50, low=0, high=449.995, mode='float', title='local osillator [MHz]')
         self.Schottky_input_span = NumericInput(value=self.iid.span, height=50, low=10, high=20000, mode='float', title='span [kHz]')
         self.Schottky_input_sampling_rate = NumericInput(value=self.iid.span*1.25, height=50, low=12.5, high=25000, mode='float', title='sampling rate [kHz]')
-        self.Schottky_input_win_len = NumericInput(value=4096, height=50, low=2048, high=262144, mode='int', title='window length')
+        self.Schottky_input_win_len = NumericInput(value=self.iid.win_len, height=50, low=2048, high=262144, mode='int', title='window length')
         def update_cen_freq(attr, old, new):
             self.Schottky_input_loc_osil.value = float(new) - float(self.Schottky_input_span.value) / 2e3
             print('update center frequency ...')
@@ -414,6 +409,7 @@ class Bokeh_show():
         self.Schottky_input_sampling_rate.on_change('value', update_sampling_rate)
         def update_win_len(attr, old, new):
             print('update window length ...')
+            self.iid.update_win_len(int(new), self.Schottky_checkbox_ec_on.active)
             self._update(1, 'ISO', None)
             if self.Schottky_checkbox_ec_on.active:
                 self._update(1, 'EC', None)
@@ -831,10 +827,4 @@ class Bokeh_show():
         self._log('Bokeh: initial complete')
         return column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_div_log]), self.MAIN_checkbox_Brho, self.MAIN_tab])
 
-#curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 1.34, 0.2, 1.34, 1e-6)._show())
-
-
-                
-                
-                
-
+#curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 1e-6)._show())

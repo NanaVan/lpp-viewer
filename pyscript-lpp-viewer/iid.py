@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
+from scipy.special import erf
 import re, sqlite3, os
 
 class IID():
@@ -19,13 +20,14 @@ class IID():
     time_unit = {'Yy': 31536000*1e24, 'Zy': 31536000*1e21, 'Ey': 31536000*1e18, 'Py': 31536000*1e15, 'Ty': 31536000*1e12, 'Gy': 31536000*1e9, 'My': 31536000*1e6, 'ky': 31536000*1e3, 'y': 31536000, 'd': 86400, 'h': 3600, 'm': 60, 's': 1, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9, 'ps': 1e-12, 'fs': 1e-15, 'as': 1e-18, 'zs': 1e-21, 'ys': 1e-24}
 
     
-    def __init__(self, lppion, cen_freq, span, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
+    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
         lppion:     LISE++ output file to be loaded
         cen_freq:   center frequency of the spectrum in MHz
         span:       span of the spectrum in kHz
+        win_len:    window length of the spectrum
         L_CSRe:     circumference of CSRe in m, default value 128.8
         gamma_t:                the gamma_t value for isochronous mode
         delta_Brho_over_Brho:   the ΔBrho/Brho for isochronous mode, [%]
@@ -35,6 +37,7 @@ class IID():
         print('iid: initial...')
         self.cen_freq = cen_freq # MHz
         self.span = span # kHz, sampling rate = 1.25 * span
+        self.win_len = win_len
         self.gamma_t = gamma_t
         self.delta_Brho_over_Brho = delta_Brho_over_Brho # %
         self.gamma_setting = gamma_setting
@@ -190,16 +193,17 @@ class IID():
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
-            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * harmonics / 2 / np.sqrt(2 * np.log(2))
+            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2))
             rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))
-            rev_time_peak_max = ion_yield[i] / rev_time_peak_sig / np.sqrt(2*np.pi)
+            #rev_time_peak_max = ion_yield[i] / rev_time_peak_sig / np.sqrt(2*np.pi)
+            rev_time_peak_max = ion_yield[i] * erf(0.001 / rev_time_peak_sig / np.sqrt(2)) / 0.002 # 2 ps / point for TOF
             if update_TOF:
                 self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
             # filter harmonics
             if len(harmonics) == 1 and harmonics[-1] > 0:
-                self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], weight[i]/peak_sig[-1]/np.sqrt(2*np.pi), rev_freq[i], int(harmonics[-1])))
+                self.cur.execute("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], weight[i], (harmonics[-1]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[-1], weight[i]*erf(self.span*1.25/self.win_len/peak_sig[-1]/np.sqrt(2)/2)*self.win_len/self.span/1.25, rev_freq[i], int(harmonics[-1])))
             elif len(harmonics) > 1:
-                re_set = [(*temp, gamma[i], weight[i], (harmonics[j]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[j], weight[i]/peak_sig[j]/np.sqrt(2*np.pi), rev_freq[i], int(harmonics[j])) for j in range(len(harmonics)) if int(harmonics[j]) > 0]
+                re_set = [(*temp, gamma[i], weight[i], (harmonics[j]*rev_freq[i]-self.cen_freq)*1e3, peak_sig[j], weight[i]*erf(self.span*1.25/self.win_len/peak_sig[j]/np.sqrt(2)/2)*self.win_len/self.span/1.25, rev_freq[i], int(harmonics[j])) for j in range(len(harmonics)) if int(harmonics[j]) > 0]
                 self.cur.executemany("INSERT INTO ISOCHRONOUSION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
             else:
                 pass
@@ -271,16 +275,16 @@ class IID():
                 ion_rev_freq = beta * self.c / ion_L *1e-6 # MHz
                 ion_weight = ion_yield * Q**2 * ion_rev_freq
                 harmonics = np.arange(np.ceil(lower_freq/ion_rev_freq), np.floor(upper_freq/ion_rev_freq)+1).astype(int)
-                peak_width = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq * harmonics if self.gamma_setting != self.gamma_t else 1e-5 * self.delta_v_over_v * ion_rev_freq * harmonics
+                peak_width = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq *1e3* harmonics if self.gamma_setting != self.gamma_t else 1e-5 * self.delta_v_over_v * ion_rev_freq *1e3 * harmonics
                 peak_sig = peak_width / 2 / np.sqrt(2 * np.log(2))
                 ion_pseudo_gamma_beta = self.Brho / mass * Q /self.c / self.u2kg * self.e
                 ion_pseudo_beta = ion_pseudo_gamma_beta / np.sqrt(1 + ion_pseudo_gamma_beta**2)
                 ion_pseudo_gamma = 1 / np.sqrt(1 - ion_pseudo_beta**2)
                 # filter harmonics
                 if len(harmonics) == 1 and harmonics[-1] > 0:
-                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], ion_weight/peak_sig[-1]/np.sqrt(2*np.pi), ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
+                    self.cur.execute("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp[:-1], ion_weight, (harmonics[-1]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[-1], ion_weight*erf(self.span*1.25/self.win_len/peak_sig[-1]/np.sqrt(2)/2)*self.win_len/self.span/1.25, ion_rev_freq, int(harmonics[-1]), ion_pseudo_gamma))
                 elif len(harmonics) > 1:
-                    re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j], ion_weight/peak_sig[j]/np.sqrt(2*np.pi), ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics)) if int(harmonics[j])>0]
+                    re_set = [(*temp[:-1], ion_weight, (harmonics[j]*ion_rev_freq-self.cen_freq)*1e3, peak_sig[j],ion_weight*erf(self.span*1.25/self.win_len/peak_sig[j]/np.sqrt(2)/2)*self.win_len/self.span/1.25, ion_rev_freq, int(harmonics[j]), ion_pseudo_gamma) for j in range(len(harmonics)) if int(harmonics[j])>0]
                     self.cur.executemany("INSERT INTO ECOOLERION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,WEIGHT,PEAKLOC,PEAKSIG,PEAKMAX,REVFREQ,HARMONIC,PSEUDOGAMMA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", re_set)
                 else:
                     pass
@@ -333,6 +337,15 @@ class IID():
         using the specific length of Ring [m] to update whole data
         '''
         self.L_CSRe = L_CSRe # [m]
+        self.calc_isochronous_peak()
+        if ec_on:
+            self.calc_ecooler_peak()
+
+    def update_win_len(self, win_len, ec_on=False):
+        '''
+        using the specific length of Ring [m] to update whole data
+        '''
+        self.win_len = win_len 
         self.calc_isochronous_peak()
         if ec_on:
             self.calc_ecooler_peak()
@@ -395,4 +408,4 @@ class IID():
 
 
 if __name__ == "__main__":
-    iid = IID("./GSI_133Sn_setting_v3.lpp", 243.5, 3000, 2.37, 0.4, 1.4098)
+    iid = IID("./GSI_133Sn_setting_v3.lpp", 243.5, 3000, 4096, 2.37, 0.4, 1.4098)
