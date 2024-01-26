@@ -506,8 +506,8 @@ class Bokeh_show():
                     self.Schottky_ions_default_source.selected.indices = [index[0]]
         self.Schottky_button_find_ion.on_event(ButtonClick, find_ion)
         # calibrate of ion
-        self.Schottky_input_peakloc = NumericInput(value=0, height=50, low=-1e4, high=1e4, mode='float', title='peak location [kHz]')
-        self.Schottky_button_calibrate = Button(label='calibrate', height=50, width=80, button_type='primary')
+        self.Schottky_input_peakloc = NumericInput(value=0, height=50, low=-1e4, high=1e4, mode='float', title='peak location [kHz]', disabled=True)
+        self.Schottky_button_calibrate = Button(label='calibrate', height=50, width=80, button_type='primary', disabled=True)
         def calibrate_Brho():
             try:
                 print('calibrate ion peak loc ...')
@@ -622,6 +622,9 @@ class Bokeh_show():
         self.Schottky_labels_default = LabelSet(x='x', y='y', source=self.Schottky_label_default_source, text='ion_label', text_color='dimgray', x_offset=0, y_offset=0)
         self.Schottky_spectrum_default_log.add_layout(self.Schottky_labels_default)
         self.Schottky_spectrum_default_linear.add_layout(self.Schottky_labels_default)
+        # default harmonic options
+        harmonic_values, harmonic_counts = np.unique(data['harmonic'], return_counts=True)
+        self.Schottky_select_harmonic.options = harmonic_values.astype(str).tolist()
         # default yield heatmap
         self.Schottky_heatmap_yield_default = figure(width=600, height=600, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
         self.Schottky_heatmap_yield_default.rect(x='N', y='Z', fill_color='color', source=self.Schottky_ions_default_source, line_color='lightgray', width=1., height=1.0)
@@ -784,7 +787,7 @@ class Bokeh_show():
             self.MAIN_input_gamma_t.value = 1/np.sqrt(float(new))
         self.MAIN_input_alpha_p.on_change('value', update_alpha_p)
         # Βρ calibration
-        self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=False)
+        self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True)
         self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]')
         def update_Brho(attr, old, new):
             print('calibrate Brho ...')
@@ -811,7 +814,7 @@ class Bokeh_show():
         # status
         self.MAIN_div_log = Div(text='', width=300, height=50, background='darkorange')
         # tabs
-        self.Schottky_tabpanel = TabPanel(child=column([row([self.Schottky_input_cen_freq, self.Schottky_input_loc_osil, self.Schottky_input_span, self.Schottky_input_sampling_rate, self.Schottky_input_win_len]), row([self.Schottky_input_gamma_setting, self.Schottky_input_mass_over_charge, self.Schottky_input_delta_v_over_v, self.Schottky_button_set_velocity]), self.Schottky_checkbox_ec_on, row([column([self.Schottky_input_show_threshold, self.Schottky_checkbox_log_on]), column([self.Schottky_input_labels_threshold, self.Schottky_checkbox_labels_on]), column([self.Schottky_select_harmonic, self.Schottky_checkbox_show_one_harmonic])]), row([self.Schottky_input_ion, self.Schottky_button_find_ion, self.Schottky_input_peakloc]), self.Schottky_tabs]), title='Schottky')
+        self.Schottky_tabpanel = TabPanel(child=column([row([self.Schottky_input_cen_freq, self.Schottky_input_loc_osil, self.Schottky_input_span, self.Schottky_input_sampling_rate, self.Schottky_input_win_len]), row([self.Schottky_input_gamma_setting, self.Schottky_input_mass_over_charge, self.Schottky_input_delta_v_over_v, self.Schottky_button_set_velocity]), self.Schottky_checkbox_ec_on, row([column([self.Schottky_input_show_threshold, self.Schottky_checkbox_log_on]), column([self.Schottky_input_labels_threshold, self.Schottky_checkbox_labels_on]), column([self.Schottky_select_harmonic, self.Schottky_checkbox_show_one_harmonic])]), row([self.Schottky_input_ion, self.Schottky_button_find_ion, self.Schottky_input_peakloc, self.Schottky_button_calibrate]), self.Schottky_tabs]), title='Schottky')
         self.TOF_tabpanel = TabPanel(child=column([row([column([row([self.TOF_input_show_threshold, self.TOF_input_x_start, self.TOF_input_x_end]), self.TOF_checkbox_log_on]), column([self.TOF_input_labels_threshold, self.TOF_checkbox_labels_on]), self.TOF_input_ion, self.TOF_button_find_ion]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
 
         self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel, self.Schottky_tabpanel])
