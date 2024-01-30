@@ -15,7 +15,7 @@ class Bokeh_show():
     '''
     A bokeh to show the yield/weight heatmap with corresponding revolution and spectrum figure
     '''
-    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8):
+    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, delta_v_over_v=1e-6, L_CSRe=128.8):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
@@ -25,7 +25,7 @@ class Bokeh_show():
         n_peak:     number of peaks to be identified
         L_CSRe:     circumference of CSRe in m, default value 128.8
         '''
-        self.iid = IID(lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v, L_CSRe, False)
+        self.iid = IID(lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, delta_v_over_v, L_CSRe, False)
         print('Bokeh: initial start')
         self._panel_Schottky()
         self._panel_TOF()
@@ -799,6 +799,19 @@ class Bokeh_show():
         def update_alpha_p(attr, old, new):
             self.MAIN_input_gamma_t.value = 1/np.sqrt(float(new))
         self.MAIN_input_alpha_p.on_change('value', update_alpha_p)
+        # minimum sigma T
+        self.MAIN_input_min_sigma_t = NumericInput(value=self.iid.min_sigma_t, height=50, low=0.01, high=10., mode='float', title='minimum σ(T) [ps]')
+        def update_min_delta_t(attr, old, new):
+            print('update minimum σ(T) ...')
+            self.iid.update_min_delta_t(float(new), self.Schottky_checkbox_ec_on.active)
+            self._update(1, 'ISO', None)
+            if self.Schottky_checkbox_ec_on.active:
+                self._update(1, 'EC', None)
+            if self.Schottky_checkbox_show_one_harmonic.active:
+                self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+            print('update complete!')
+            self._log('update minimum σ(T) complete!')
+        self.MAIN_input_min_sigma_t.on_change('value', update_min_delta_t)
         # Βρ calibration
         self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True)
         self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]')
@@ -841,6 +854,6 @@ class Bokeh_show():
         self.TOF_labels.visible = False
         print('Bokeh: initial complete!')
         self._log('Bokeh: initial complete')
-        return column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_div_log]), self.MAIN_checkbox_Brho, self.MAIN_tab])
+        return column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), self.MAIN_checkbox_Brho, self.MAIN_tab])
 
-#curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 1e-6)._show())
+curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 1e-6)._show())

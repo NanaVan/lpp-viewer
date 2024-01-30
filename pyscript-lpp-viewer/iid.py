@@ -20,7 +20,7 @@ class IID():
     time_unit = {'Yy': 31536000*1e24, 'Zy': 31536000*1e21, 'Ey': 31536000*1e18, 'Py': 31536000*1e15, 'Ty': 31536000*1e12, 'Gy': 31536000*1e9, 'My': 31536000*1e6, 'ky': 31536000*1e3, 'y': 31536000, 'd': 86400, 'h': 3600, 'm': 60, 's': 1, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9, 'ps': 1e-12, 'fs': 1e-15, 'as': 1e-18, 'zs': 1e-21, 'ys': 1e-24}
 
     
-    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
+    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
@@ -30,6 +30,7 @@ class IID():
         win_len:    window length of the spectrum
         L_CSRe:     circumference of CSRe in m, default value 128.8
         gamma_t:                the gamma_t value for isochronous mode
+        min_sigma_t:            the minimum sigma t for isochronous mode, [ps]
         delta_Brho_over_Brho:   the ΔBrho/Brho for isochronous mode, [%]
         gamma_setting:          the velocity (gamma) for the e-cooler setting
         delta_v_over_v:         the Δv/v for the e-cooler setting, represent the e-cooler capacity of cooling
@@ -41,6 +42,7 @@ class IID():
         self.gamma_t = gamma_t
         self.delta_Brho_over_Brho = delta_Brho_over_Brho # %
         self.gamma_setting = gamma_setting
+        self.min_sigma_t = min_sigma_t # ps
         self.delta_v_over_v = delta_v_over_v # %
         self.L_CSRe = L_CSRe # m
         self.verbose = verbose
@@ -193,8 +195,10 @@ class IID():
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
-            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2))
-            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))
+            #peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2))
+            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) + self.min_sigma_t * rev_freq[i]**2 * 1e3 * harmonics**2
+            #rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))
+            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))  + self.min_sigma_t * 1e-3
             #rev_time_peak_max = ion_yield[i] / rev_time_peak_sig / np.sqrt(2*np.pi)
             rev_time_peak_max = ion_yield[i] * erf(0.001 / rev_time_peak_sig / np.sqrt(2)) / 0.002 # 2 ps / point for TOF
             if update_TOF:
@@ -275,8 +279,7 @@ class IID():
                 ion_rev_freq = beta * self.c / ion_L *1e-6 # MHz
                 ion_weight = ion_yield * Q**2 * ion_rev_freq
                 harmonics = np.arange(np.ceil(lower_freq/ion_rev_freq), np.floor(upper_freq/ion_rev_freq)+1).astype(int)
-                peak_width = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq *1e3* harmonics if self.gamma_setting != self.gamma_t else 1e-5 * self.delta_v_over_v * ion_rev_freq *1e3 * harmonics
-                peak_sig = peak_width / 2 / np.sqrt(2 * np.log(2))
+                peak_sig = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq *1e3* harmonics / 2 / np.sqrt(2 * np.log(2)) + self.min_sigma_t * ion_rev_freq**2 * 1e3 * harmonics**2
                 ion_pseudo_gamma_beta = self.Brho / mass * Q /self.c / self.u2kg * self.e
                 ion_pseudo_beta = ion_pseudo_gamma_beta / np.sqrt(1 + ion_pseudo_gamma_beta**2)
                 ion_pseudo_gamma = 1 / np.sqrt(1 - ion_pseudo_beta**2)
@@ -310,6 +313,15 @@ class IID():
         using the specific ΔΒρ/Βρ to update whole data
         '''
         self.delta_Brho_over_Brho = delta_Brho_over_Brho
+        self.calc_isochronous_peak()
+        if ec_on:
+            self.calc_ecooler_peak()
+
+    def update_min_delta_t(self, min_sigma_t, ec_on=False):
+        '''
+        using the specific minimum sigma t to update whole data
+        '''
+        self.min_sigma_t = min_sigma_t
         self.calc_isochronous_peak()
         if ec_on:
             self.calc_ecooler_peak()
