@@ -195,11 +195,8 @@ class IID():
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
-            #peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2))
             peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) + self.min_sigma_t * rev_freq[i]**2 * 1e3 * harmonics**2
-            #rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2)) if gamma[i] != self.gamma_t else  np.nonzero(np.abs(1 / gamma**2 - 1 / self.gamma_t**2)).min()*0.5 * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))
             rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))  + self.min_sigma_t * 1e-3
-            #rev_time_peak_max = ion_yield[i] / rev_time_peak_sig / np.sqrt(2*np.pi)
             rev_time_peak_max = ion_yield[i] * erf(0.001 / rev_time_peak_sig / np.sqrt(2)) / 0.002 # 2 ps / point for TOF
             if update_TOF:
                 self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
