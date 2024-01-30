@@ -25,7 +25,7 @@ def process_file(event):
             pn.pane.Alert('## Info\n### The current interface is for functional testing only. \n### Please wait for the final version.').servable(target='testShow')
             pn.pane.Bokeh(show_Bokeh).servable(target='fileShow')
         except:
-            console.log('.lpp file error!')
+           console.log('.lpp file error!')
             #pn.state.notifications.warning('.lpp file format error! please check your file first.')
             pn.pane.Alert('## Alert\n### Some error exist when parsing your .lpp file.\nYou can send your .lpp file to <u>wangqian2016@impcas.ac.cn</u> and ask for lpp-view issue solution.', alert_type='warning').servable(target='fileShow')
         

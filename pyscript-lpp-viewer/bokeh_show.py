@@ -44,15 +44,25 @@ class Bokeh_show():
         input Gaussian peak's peak location, sigma, and area to make a patches for discreting
         return xs, ys for hist-like patches, y_value
         '''
-        x_shift_left, x_shift_right = x_range - (x_range[1] - x_range[0])/2, x_range + (x_range[1] - x_range[0])/2
-        y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig)) / (x_range[1] - x_range[0])
-        # cut off with threshold
-        x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[0]])])
         threshold = 1e-12
-        x_start, x_end = peak_loc - np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area)), peak_loc + np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area))
-        start_index = np.searchsorted(x_reset, x_start) - 1
+        try:
+            x_shift_left, x_shift_right = x_range - (x_range[1] - x_range[0])/2, x_range + (x_range[1] - x_range[0])/2
+            y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig)) / (x_range[1] - x_range[0])
+            # cut off with threshold
+            x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[0]])])
+            x_start, x_end = peak_loc - np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area)), peak_loc + np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area))
+            start_index = np.searchsorted(x_reset, x_start) - 1
+            end_index = np.searchsorted(x_reset, x_end)
+        except:
+            x_range = x_range.astype(np.float32)
+            x_shift_left, x_shift_right = x_range - (x_range[1] - x_range[0])/2, x_range + (x_range[1] - x_range[0])/2
+            y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig)) / (x_range[1] - x_range[0])
+            # cut off with threshold
+            x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[0]])])
+            x_start, x_end = peak_loc - np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area)), peak_loc + np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area))
+            start_index = np.searchsorted(x_reset, x_start.astype(np.float32)) - 1
+            end_index = np.searchsorted(x_reset, x_end.astype(np.float32))
         start_index = 0 if start_index < 0 else start_index
-        end_index = np.searchsorted(x_reset, x_end)
         end_index = len(x_range) if end_index == len(x_reset) else end_index
         ys = y_value[start_index:end_index]
         xs = x_reset[start_index:end_index+1]
@@ -156,7 +166,7 @@ class Bokeh_show():
                 line['x'] = []
                 line['y'] = []
             else:
-                x_range = np.arange(500, 800, step=0.002)
+                x_range = np.arange(500, 800, step=0.002).astype(np.float32)
                 xs, ys, y = [], [], []
                 for peak_area, peak_sig, peak_loc in zip(data['yield'], data['peak_sig'], data['rev_time']):
                     temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig, peak_area, x_range)
@@ -166,7 +176,10 @@ class Bokeh_show():
                 data['xs'] = xs
                 data['ys'] = ys
                 line['x'] = x_range
-                line['y'] = np.sum(y, axis=0)
+                try:
+                    line['y'] = np.sum(y, axis=0)
+                except:
+                    line['y'] = [np.sum([y[i][j] for i in range(len(y))]) for j in range(len(x_range))]
                 yield_top = int(np.log10(np.max(data['total_yield'])))
                 data['color'] = [Category10_9[yield_top-int(np.log10(item))] if yield_top - int(np.log10(item)) <= 8 else Category10_9[-1] for item in data['total_yield']]
             return data, line
