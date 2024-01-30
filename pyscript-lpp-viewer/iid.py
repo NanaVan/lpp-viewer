@@ -195,8 +195,8 @@ class IID():
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
-            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics / 2 / np.sqrt(2 * np.log(2)) + self.min_sigma_t * rev_freq[i]**2 * 1e3 * harmonics**2
-            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i] / 2 / np.sqrt(2 * np.log(2))  + self.min_sigma_t * 1e-3
+            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_freq[i] * 1e3 * harmonics + self.min_sigma_t * rev_freq[i]**2 * 1e-9 * harmonics**2
+            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i]  + self.min_sigma_t * 1e-3
             rev_time_peak_max = ion_yield[i] * erf(0.001 / rev_time_peak_sig / np.sqrt(2)) / 0.002 # 2 ps / point for TOF
             if update_TOF:
                 self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
@@ -276,7 +276,7 @@ class IID():
                 ion_rev_freq = beta * self.c / ion_L *1e-6 # MHz
                 ion_weight = ion_yield * Q**2 * ion_rev_freq
                 harmonics = np.arange(np.ceil(lower_freq/ion_rev_freq), np.floor(upper_freq/ion_rev_freq)+1).astype(int)
-                peak_sig = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq *1e3* harmonics / 2 / np.sqrt(2 * np.log(2)) + self.min_sigma_t * ion_rev_freq**2 * 1e3 * harmonics**2
+                peak_sig = np.abs(1 - self.gamma_setting**2 / self.gamma_t**2) * self.delta_v_over_v * ion_rev_freq *1e3* harmonics + self.min_sigma_t * ion_rev_freq**2 * 1e-9 * harmonics**2
                 ion_pseudo_gamma_beta = self.Brho / mass * Q /self.c / self.u2kg * self.e
                 ion_pseudo_beta = ion_pseudo_gamma_beta / np.sqrt(1 + ion_pseudo_gamma_beta**2)
                 ion_pseudo_gamma = 1 / np.sqrt(1 - ion_pseudo_beta**2)
