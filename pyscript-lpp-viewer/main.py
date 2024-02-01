@@ -21,7 +21,7 @@ async def process_file(event):
             except:
                 console.log('.lpp format error!')
                 markdown_words.object = '## Upload and parse your .lpp file'
-                pn.pane.Alert('## Alert\n### Some error may exist in your .lpp file. Please check your file first.\nFormat of .lpp is encoded as CP932.', alert_type='danger').servable(target='fileShow')
+                pn.pane.Alert('## Alert\n### Some error may exist in your .lpp file. Please check your file first.\nFormat of .lpp is encoded as utf-8, please change to CP932', alert_type='danger').servable(target='testShow')
                 return
             try:
                 console.log('Bokeh: loading...')
@@ -60,7 +60,6 @@ def select_display_mode(target, event):
         target.object = '## Alert\n### Select display mode first!'
         target.alert_type = 'warning'
 
-pn.extension()
 
 # for .lpp file import
 input_file = pn.widgets.FileInput(accept='.lpp', width=180, multiple=False)
