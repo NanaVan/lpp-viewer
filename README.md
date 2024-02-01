@@ -14,7 +14,7 @@ webside address: [China/Overseas](https://lpp-viewer.pages.dev/)
 * Usage: 
 ```shell
 > cd .\stand-alone
-> bokeh server --show .\main.py
+> bokeh serve --show .\main.py
 ```
 
 ## Additional tool: ion data generator from .\database-maker
