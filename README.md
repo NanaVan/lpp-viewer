@@ -14,6 +14,13 @@ webside address: [China/Overseas](https://lpp-viewer.pages.dev/)
 * Usage: 
 ```shell
 > cd .\stand-alone
-> bokeh serve --show .\main.py
+> bokeh server --show .\main.py
 ```
 
+## Additional tool: ion data generator from .\database-maker
+generate ion data `ionic_data.db` from NUBASE2020 and NIST binding energy file
+* Usage:
+```shell
+> cd .\database-maker
+> python gen_nubase.py
+``` 
