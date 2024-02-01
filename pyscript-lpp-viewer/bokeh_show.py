@@ -92,7 +92,7 @@ class Bokeh_show():
                     else:
                         result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, PSEUDOGAMMA FROM ECOOLERION WHERE WEIGHT>=? AND HARMONIC=?", (self.Schottky_input_show_threshold.value, harmonic)).fetchall()
             data = {
-                'ion': [item[0] for item in result],
+                'ion': ['{:}+'.format(item[0]) for item in result],
                 'element': [item[1] for item in result],
                 'N': [item[2] for item in result],
                 'Z': [item[3] for item in result],
@@ -145,7 +145,7 @@ class Bokeh_show():
             else:
                 result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKSIG, REVTIME, HALFLIFE, YIELD, TOTALYIELD, GAMMA, PEAKMAX, SOURCE, TYPE FROM TOFION WHERE YIELD>=?", (self.TOF_input_show_threshold.value,)).fetchall()
             data = {
-                'ion': [item[0] for item in result],
+                'ion': ['{:}+'.format(item[0]) for item in result],
                 'element': [item[1] for item in result],
                 'N': [item[2] for item in result],
                 'Z': [item[3] for item in result],
@@ -265,7 +265,7 @@ class Bokeh_show():
         '''
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
-        ion_completion = ["{:}({:})".format(ion, isometric) for ion, isometric in result]
+        ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
         self.TOF_input_ion = AutocompleteInput(completions=ion_completion, title='ion') 
         self.TOF_button_find_ion = Button(label='find', height=50, width=80, button_type='primary')
         self.TOF_div_log = Div(text='', width=500, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll'})
@@ -274,7 +274,7 @@ class Bokeh_show():
                 ion, isometric = self.TOF_input_ion.value.split('(')
                 print('{:}({:})'.format(ion, isometric[:-1]))
                 try:
-                    result = self.iid.cur.execute("SELECT YIELD, REVTIME, HALFLIFE, PEAKMAX FROM TOFION WHERE ION=? AND ISOMERIC=?", (ion, isometric[:-1])).fetchall()
+                    result = self.iid.cur.execute("SELECT YIELD, REVTIME, HALFLIFE, PEAKMAX FROM TOFION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchall()
                     text = '{:}({:}) in .lpp file:<br/>yield: {:.3e}, rev time: {:.3f} ns, peak max: {:.3e}, half life: {:}'.format(ion, isometric[:-1], result[0][0], result[0][1], result[0][-1], result[0][-2])
                     self._log(text, 'TOF')
                 except:
@@ -378,8 +378,8 @@ class Bokeh_show():
         self.TOF_spectrum_log.tools[-1].point_policy = 'follow_mouse'
         self.TOF_spectrum_log.xaxis.axis_label = "revolution time [ns]"
         self.TOF_spectrum_log.yaxis.axis_label = "counts/s / 1 ns"
-        TOF_log_ions = self.TOF_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='dimgray')
-        self.TOF_spectrum_log.line(x='x', y='y', source=self.TOF_line_source, color='gray')
+        TOF_log_ions = self.TOF_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
+        self.TOF_spectrum_log.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_log.y_range.start = np.min(self.TOF_line_source.data['y'])
         self.TOF_spectrum_log.tools[-1].renderers = [TOF_log_ions]
         # spectrum (linear scale)
@@ -389,8 +389,8 @@ class Bokeh_show():
         self.TOF_spectrum_linear.tools[-1].point_policy = 'follow_mouse'
         self.TOF_spectrum_linear.xaxis.axis_label = "revolution time [ns]"
         self.TOF_spectrum_linear.yaxis.axis_label = "counts/s / 1 ns"
-        TOF_linear_ions = self.TOF_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='dimgray')
-        self.TOF_spectrum_linear.line(x='x', y='y', source=self.TOF_line_source, color='gray')
+        TOF_linear_ions = self.TOF_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
+        self.TOF_spectrum_linear.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_linear.y_range.start = np.min(self.TOF_line_source.data['y']) - 1.
         self.TOF_spectrum_linear.tools[-1].renderers = [TOF_linear_ions]
         # σ(T) plot
@@ -405,7 +405,7 @@ class Bokeh_show():
         self.TOF_plot.y_range.start = self.iid.min_sigma_t - 0.1
         self.TOF_plot.tools[-1].renderers = [TOF_plot_ions]
         # label on
-        self.TOF_labels = LabelSet(x='x', y='y', source=self.TOF_label_source, text='ion_label', text_color='dimgray', x_offset=0, y_offset=0)
+        self.TOF_labels = LabelSet(x='x', y='y', source=self.TOF_label_source, text='ion_label', text_color='dimgray', x_offset=0, y_offset=0, text_font_size={'value': '12px'}, angle=90, angle_units='deg')
         self.TOF_spectrum_log.add_layout(self.TOF_labels)
         self.TOF_spectrum_linear.add_layout(self.TOF_labels)
         # yield heatmap
@@ -554,7 +554,7 @@ class Bokeh_show():
         self.Schottky_select_harmonic.on_change('value', change_harmonic)
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
-        ion_completion = ["{:}({:})".format(ion, isometric) for ion, isometric in result]
+        ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
         self.Schottky_input_ion = AutocompleteInput(completions=ion_completion, title='ion')
         self.Schottky_button_find_ion = Button(label='find', height=50, width=80, button_type='primary')
         self.Schottky_div_log = Div(text='', width=500, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll'})
@@ -563,7 +563,7 @@ class Bokeh_show():
                 ion, isometric = self.Schottky_input_ion.value.split('(')
                 print('{:}({:})'.format(ion, isometric[:-1]))
                 try:
-                    result = self.iid.cur.execute("SELECT WEIGHT, YIELD, REVFREQ, HARMONIC, PEAKLOC, HALFLIFE, PEAKMAX FROM ISOCHRONOUSION WHERE ION=? AND ISOMERIC=?", (ion, isometric[:-1])).fetchall()
+                    result = self.iid.cur.execute("SELECT WEIGHT, YIELD, REVFREQ, HARMONIC, PEAKLOC, HALFLIFE, PEAKMAX FROM ISOCHRONOUSION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchall()
                     text = '{:}({:}) in .lpp file:<br/>weight: {:.3e}, yield: {:.3e}, rev freq: {:.5f} MHz, half life: {:}'.format(ion, isometric[:-1], result[0][0], result[0][1], result[0][2], result[0][-2])
                     for info in result:
                         text += '<br/>harmonic: {:g}, peak loc: {:.2f} kHz, peak max: {:.3e}'.format(info[3], info[4], info[-1])
@@ -715,8 +715,8 @@ class Bokeh_show():
         self.Schottky_spectrum_default_log.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_default_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
         self.Schottky_spectrum_default_log.yaxis.axis_label = "psd [arb. unit]"
-        Schottky_log_default_ions = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='dimgray')
-        self.Schottky_spectrum_default_log.line(x='x', y='y', source=self.Schottky_line_default_source, color='gray')
+        Schottky_log_default_ions = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='darkgray')
+        self.Schottky_spectrum_default_log.line(x='x', y='y', source=self.Schottky_line_default_source, color='black')
         Schottky_log_default_harmonic = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_default_source, color='goldenrod')
         self.Schottky_spectrum_default_log.y_range.start = np.min(self.Schottky_line_default_source.data['y'])
         self.Schottky_spectrum_default_log.tools[-1].renderers = [Schottky_log_default_ions, Schottky_log_default_harmonic]
@@ -727,13 +727,13 @@ class Bokeh_show():
         self.Schottky_spectrum_default_linear.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_default_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
         self.Schottky_spectrum_default_linear.yaxis.axis_label = "psd [arb. unit]"
-        Schottky_linear_default_ions = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='dimgray')
-        self.Schottky_spectrum_default_linear.line(x='x', y='y', source=self.Schottky_line_default_source, color='gray')
+        Schottky_linear_default_ions = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='darkgray')
+        self.Schottky_spectrum_default_linear.line(x='x', y='y', source=self.Schottky_line_default_source, color='black')
         Schottky_linear_default_harmonic = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_default_source, color='goldenrod')
         self.Schottky_spectrum_default_linear.y_range.start = np.min(self.Schottky_line_default_source.data['y'])
         self.Schottky_spectrum_default_linear.tools[-1].renderers = [Schottky_linear_default_ions, Schottky_linear_default_harmonic]
         # default label on
-        self.Schottky_labels_default = LabelSet(x='x', y='y', source=self.Schottky_label_default_source, text='ion_label', text_color='dimgray', x_offset=0, y_offset=0)
+        self.Schottky_labels_default = LabelSet(x='x', y='y', source=self.Schottky_label_default_source, text='ion_label', text_color='dimgray', x_offset=0, y_offset=0, text_font_size={'value': '12px'}, angle=90, angle_units='deg')
         self.Schottky_spectrum_default_log.add_layout(self.Schottky_labels_default)
         self.Schottky_spectrum_default_linear.add_layout(self.Schottky_labels_default)
         # default harmonic options
@@ -818,7 +818,7 @@ class Bokeh_show():
         except:
             pass
         # EC label on
-        self.Schottky_labels_EC = LabelSet(x='x', y='y', source=self.Schottky_label_EC_source, text='ion_label', text_color='deepskyblue', x_offset=0, y_offset=0)
+        self.Schottky_labels_EC = LabelSet(x='x', y='y', source=self.Schottky_label_EC_source, text='ion_label', text_color='deepskyblue', x_offset=0, y_offset=0, text_font_size={'value': '12px'}, angle=90, angle_units='deg')
         self.Schottky_spectrum_EC_log.add_layout(self.Schottky_labels_EC)
         self.Schottky_spectrum_EC_linear.add_layout(self.Schottky_labels_EC)
         # EC yield heatmap
@@ -871,25 +871,25 @@ class Bokeh_show():
         
         # calculate 
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
-        ion_completion = ["{:}({:})".format(ion, isometric) for ion, isometric in result]
+        ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
         self.MAIN_select_calc_ion = Select(options=ion_completion, value=ion_completion[2], title='targeted ion', height=50)
         self.MAIN_input_calc_gamma_t = NumericInput(value=self.iid.gamma_t, low=0.0001, high=5.0000, height=50, mode='float', title='γt')
         self.MAIN_input_calc_Brho = NumericInput(value=1., height=50, low=1., high=15., mode='float', title='Bρ [Tm]')        
         def change_ion(attr, old, new):
             ion, isometric = self.MAIN_select_calc_ion.value.split('(')
-            mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion, isometric[:-1])).fetchone()
+            mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchone()
             gamma_beta = self.MAIN_input_calc_Brho.value / mass * Q / self.iid.c / self.iid.u2kg * self.iid.e
             beta = gamma_beta / np.sqrt(1 + gamma_beta**2)
             gamma = 1 / np.sqrt(1 - beta**2)
             self.MAIN_input_calc_gamma_t.value = gamma
         def calc_Brho(attr, old, new):
             ion, isometric = self.MAIN_select_calc_ion.value.split('(')
-            mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion, isometric[:-1])).fetchone()
+            mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchone()
             Brho = np.sqrt(float(new)**2 - 1) * mass / Q * self.iid.c * self.iid.u2kg / self.iid.e 
             self.MAIN_input_calc_Brho.value = Brho
         def calc_gamma_t(attr, old, new):
             ion, isometric = self.MAIN_select_calc_ion.value.split('(')
-            mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion, isometric[:-1])).fetchone()
+            mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchone()
             gamma_beta = float(new) / mass * Q / self.iid.c / self.iid.u2kg * self.iid.e
             beta = gamma_beta / np.sqrt(1 + gamma_beta**2)
             gamma = 1 / np.sqrt(1 - beta**2)
