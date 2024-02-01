@@ -14,6 +14,6 @@ webside address: [China/Overseas](https://lpp-viewer.pages.dev/)
 * Usage: 
 ```shell
 > cd .\stand-alone
-> bokeh server --show .\main.py
+> bokeh serve --show .\main.py
 ```
 
