@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from bokeh.plotting import figure, curdoc, show
-from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs, LabelSet, Select
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs, LabelSet, Select, ScientificFormatter, NumberFormatter
 from bokeh.events import ButtonClick
 from bokeh.layouts import layout, row, column, Spacer
 from bokeh.palettes import Category10_9
@@ -26,6 +26,7 @@ class Bokeh_show():
         L_CSRe:     circumference of CSRe in m, default value 128.8
         '''
         self.iid = IID(lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v, L_CSRe, False)
+        self.set_styles = {'checkbox': InlineStyleSheet(css='span {font-size: 20px;}'), 'numericinput': InlineStyleSheet(css='.bk-input-group {font-size: 18px;} .bk-input {font-size: 16px;}'), 'tabs': InlineStyleSheet(css='.bk-tab {font-size: 25px; font-weight: bold;}'), 'button': InlineStyleSheet(css='.bk-btn-group button {font-size: 20px;}')}
         
     def _log(self, status, tab_position='MAIN'):
         '''
@@ -267,9 +268,9 @@ class Bokeh_show():
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
         ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
-        self.TOF_input_ion = AutocompleteInput(completions=ion_completion, title='ion') 
-        self.TOF_button_find_ion = Button(label='find', height=50, width=80, button_type='primary')
-        self.TOF_div_log = Div(text='', width=500, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll'})
+        self.TOF_input_ion = AutocompleteInput(completions=ion_completion, title='ion', stylesheets=[self.set_styles['numericinput']]) 
+        self.TOF_button_find_ion = Button(label='find', height=50, width=80, button_type='primary', stylesheets=[self.set_styles['button']])
+        self.TOF_div_log = Div(text='', width=800, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll', 'font-size':'20px'})
         def find_ion():
             if self.TOF_input_ion.value !='':
                 ion, isometric = self.TOF_input_ion.value.split('(')
@@ -289,8 +290,8 @@ class Bokeh_show():
                 self.TOF_ions_source.selected.indices = [index[0]]
         self.TOF_button_find_ion.on_event(ButtonClick, find_ion)
         # change x range
-        self.TOF_input_x_start = NumericInput(value=620, low=500, high=700, height=50, mode='float', title='revolution start [ns]')
-        self.TOF_input_x_end = NumericInput(value=640, low=510, high=800, height=50, mode='float', title='revolution end [ns]')
+        self.TOF_input_x_start = NumericInput(value=620, low=500, high=700, height=50, mode='float', title='revolution start [ns]', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_input_x_end = NumericInput(value=640, low=510, high=800, height=50, mode='float', title='revolution end [ns]', stylesheets=[self.set_styles['numericinput']])
         def change_x_range(attr, old, new):
             if float(self.TOF_input_x_end.value) > float(self.TOF_input_x_start.value):
                 self.TOF_spectrum_log.x_range.start = float(self.TOF_input_x_start.value)
@@ -300,11 +301,11 @@ class Bokeh_show():
         self.TOF_input_x_start.on_change('value', change_x_range)
         self.TOF_input_x_end.on_change('value', change_x_range)
         # show threshold / label / log scale
-        self.TOF_checkbox_figure_threshold = Checkbox(label='Using figure threshold', height=25, active=True)
-        self.TOF_checkbox_yield_threshold = Checkbox(label='Using yield threshold', height=25, active=False)
-        self.TOF_input_show_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold')
-        self.TOF_input_labels_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold for labels')
-        self.TOF_checkbox_labels_on = Checkbox(label='show labels', height=25, active=False)
+        self.TOF_checkbox_figure_threshold = Checkbox(label='Using figure threshold', height=25, active=True, stylesheets=[self.set_styles['checkbox']])
+        self.TOF_checkbox_yield_threshold = Checkbox(label='Using yield threshold', height=25, active=False, stylesheets=[self.set_styles['checkbox']])
+        self.TOF_input_show_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_input_labels_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold for labels', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_checkbox_labels_on = Checkbox(label='show labels', height=25, active=False, stylesheets=[self.set_styles['checkbox']])
         def threshold_switch_figure(attr, old, new):
             if new:
                 self.TOF_checkbox_yield_threshold.active = False
@@ -347,7 +348,7 @@ class Bokeh_show():
                 self.TOF_labels.visible = False
         self.TOF_checkbox_labels_on.on_change('active', set_labels_on)
 
-        self.TOF_checkbox_log_on = Checkbox(label='log on', height=25, active=True)
+        self.TOF_checkbox_log_on = Checkbox(label='log on', height=25, active=True, stylesheets=[self.set_styles['checkbox']])
         def set_log_on(attr, old, new):
             if self.TOF_checkbox_log_on.active:
                 self.TOF_spectrum_log.visible = True
@@ -356,7 +357,6 @@ class Bokeh_show():
                 self.TOF_spectrum_log.visible = False
                 self.TOF_spectrum_linear.visible = True
         self.TOF_checkbox_log_on.on_change('active', set_log_on)
-        # tabpanel
                 
     def _initial_TOF(self):
         data, line = self._wrap_data('TOF', None, False)
@@ -374,33 +374,54 @@ class Bokeh_show():
         ]
         # spectrum (log scale)
         self.TOF_spectrum_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(float(self.TOF_input_x_start.value), float(self.TOF_input_x_end.value)), y_axis_type='log', output_backend='webgl')
+        self.TOF_spectrum_log.title.text_font_size = '25px'
         self.TOF_spectrum_log.tools[-1].tooltips = ion_tooltip
         self.TOF_spectrum_log.tools[-1].attachment = 'vertical'
         self.TOF_spectrum_log.tools[-1].point_policy = 'follow_mouse'
         self.TOF_spectrum_log.xaxis.axis_label = "revolution time [ns]"
-        self.TOF_spectrum_log.yaxis.axis_label = "counts/s / 1 ns"
+        self.TOF_spectrum_log.xaxis.axis_label_text_font_size = '16px'
+        self.TOF_spectrum_log.xaxis.major_label_text_font_size = '14px'
+        self.TOF_spectrum_log.xaxis.axis_label_text_font_style = 'bold'
+        self.TOF_spectrum_log.yaxis.axis_label = "yield / time [pps/ns]"
+        self.TOF_spectrum_log.yaxis.axis_label_text_font_size = '16px'
+        self.TOF_spectrum_log.yaxis.major_label_text_font_size = '14px'
+        self.TOF_spectrum_log.yaxis.axis_label_text_font_style = 'bold'
         TOF_log_ions = self.TOF_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
         self.TOF_spectrum_log.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_log.y_range.start = np.min(self.TOF_line_source.data['y'])
         self.TOF_spectrum_log.tools[-1].renderers = [TOF_log_ions]
         # spectrum (linear scale)
         self.TOF_spectrum_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
+        self.TOF_spectrum_linear.title.text_font_size = '25px'
         self.TOF_spectrum_linear.tools[-1].tooltips = ion_tooltip
         self.TOF_spectrum_linear.tools[-1].attachment = 'vertical'
         self.TOF_spectrum_linear.tools[-1].point_policy = 'follow_mouse'
         self.TOF_spectrum_linear.xaxis.axis_label = "revolution time [ns]"
-        self.TOF_spectrum_linear.yaxis.axis_label = "counts/s / 1 ns"
+        self.TOF_spectrum_linear.xaxis.axis_label_text_font_size = '16px'
+        self.TOF_spectrum_linear.xaxis.major_label_text_font_size = '14px'
+        self.TOF_spectrum_linear.xaxis.axis_label_text_font_style = 'bold'
+        self.TOF_spectrum_linear.yaxis.axis_label = "yield / time [pps/ns]"
+        self.TOF_spectrum_linear.yaxis.axis_label_text_font_size = '16px'
+        self.TOF_spectrum_linear.yaxis.major_label_text_font_size = '14px'
+        self.TOF_spectrum_linear.yaxis.axis_label_text_font_style = 'bold'
         TOF_linear_ions = self.TOF_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
         self.TOF_spectrum_linear.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_linear.y_range.start = np.min(self.TOF_line_source.data['y']) - 1.
         self.TOF_spectrum_linear.tools[-1].renderers = [TOF_linear_ions]
         # σ(T) plot
         self.TOF_plot = figure(width=1000, height=300, title='σ(T)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
+        self.TOF_plot.title.text_font_size = '25px'
         self.TOF_plot.tools[-1].tooltips = ion_tooltip
         self.TOF_plot.tools[-1].attachment = 'vertical'
         self.TOF_plot.tools[-1].point_policy = 'follow_mouse'
         self.TOF_plot.xaxis.axis_label = "revolution time [ns]"
+        self.TOF_plot.xaxis.axis_label_text_font_size = '16px'
+        self.TOF_plot.xaxis.major_label_text_font_size = '14px'
+        self.TOF_plot.xaxis.axis_label_text_font_style = 'bold'
         self.TOF_plot.yaxis.axis_label = "σ(T) [ps]"
+        self.TOF_plot.yaxis.axis_label_text_font_size = '16px'
+        self.TOF_plot.yaxis.major_label_text_font_size = '14px'
+        self.TOF_plot.yaxis.axis_label_text_font_style = 'bold'
         TOF_plot_ions = self.TOF_plot.dot(x='rev_time', y='peak_sig', source=self.TOF_ions_source, color='red', size=10)
         self.TOF_plot.line(x='x', y='sig_y', source=self.TOF_line_source, color='gray')
         self.TOF_plot.y_range.start = self.iid.min_sigma_t - 0.1
@@ -411,33 +432,36 @@ class Bokeh_show():
         self.TOF_spectrum_linear.add_layout(self.TOF_labels)
         # yield heatmap
         self.TOF_heatmap_yield = figure(width=600, height=600, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.TOF_heatmap_yield.title.text_font_size = '25px'
+        self.TOF_heatmap_yield.xaxis.major_label_text_font_size = '14px'
+        self.TOF_heatmap_yield.yaxis.major_label_text_font_size = '14px'
         self.TOF_heatmap_yield.rect(x='N', y='Z', fill_color='color', source=self.TOF_ions_source, line_color='lightgray', width=1., height=1.)
         try:
             yield_top = int(np.log10(np.max(self.TOF_source.data['total_yield'])))
         except:
             yield_top = 1
         self.TOF_colorBar = LogColorMapper(palette=Category10_9, high=10**(yield_top-8), low=10**(yield_top+1))
-        color_bar_TOF = ColorBar(color_mapper=self.TOF_colorBar)
+        color_bar_TOF = ColorBar(color_mapper=self.TOF_colorBar, major_label_text_font_size='14px')
         self.TOF_heatmap_yield.add_layout(color_bar_TOF, "above")
         # ion table
         columns = [
                 TableColumn(field='ion', title='ion'),
                 TableColumn(field='isometric', title='isometric state'),
                 TableColumn(field='half_life', title='half life'),
-                TableColumn(field='yield', title='yield'),
-                TableColumn(field='rev_time', title='rev time [ns]'),
+                TableColumn(field='yield', title='yield', formatter=ScientificFormatter(precision=5)),
+                TableColumn(field='rev_time', title='rev time [ns]', formatter=ScientificFormatter(precision=5)),
                 TableColumn(field='type', title='ion type'),
                 TableColumn(field='source', title='mass source')
         ]
-        self.TOF_table = DataTable(source=self.TOF_ions_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell.selected {background-color: #F1B6B9;}')])
+        self.TOF_table = DataTable(source=self.TOF_ions_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-cell.selected {background-color: #F1B6B9;} .slick-header-column {height: 20px; font-size: 16px;}')])
         
     def _panel_Schottky(self):
         # center frequency (local osillator) / span (sampling rate) / window length
-        self.Schottky_input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=0.005, high=450, mode='float', title='center frequency [MHz]')
-        self.Schottky_input_loc_osil = NumericInput(value=self.iid.cen_freq-self.iid.span/2e3, height=50, low=0, high=449.995, mode='float', title='local osillator [MHz]')
-        self.Schottky_input_span = NumericInput(value=self.iid.span, height=50, low=10, high=20000, mode='float', title='span [kHz]')
-        self.Schottky_input_sampling_rate = NumericInput(value=self.iid.span*1.25, height=50, low=12.5, high=25000, mode='float', title='sampling rate [kHz]')
-        self.Schottky_input_win_len = NumericInput(value=self.iid.win_len, height=50, low=2048, high=262144, mode='int', title='window length')
+        self.Schottky_input_cen_freq = NumericInput(value=self.iid.cen_freq, height=50, low=0.005, high=450, mode='float', title='center frequency [MHz]', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_loc_osil = NumericInput(value=self.iid.cen_freq-self.iid.span/2e3, height=50, low=0, high=449.995, mode='float', title='local osillator [MHz]', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_span = NumericInput(value=self.iid.span, height=50, low=10, high=20000, mode='float', title='span [kHz]', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_sampling_rate = NumericInput(value=self.iid.span*1.25, height=50, low=12.5, high=25000, mode='float', title='sampling rate [kHz]', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_win_len = NumericInput(value=self.iid.win_len, height=50, low=2048, high=262144, mode='int', title='window length', stylesheets=[self.set_styles['numericinput']])
         def update_cen_freq(attr, old, new):
             self.Schottky_input_loc_osil.value = float(new) - float(self.Schottky_input_span.value) / 2e3
             print('update center frequency ...')
@@ -492,13 +516,13 @@ class Bokeh_show():
             self._log('update window length complete!')
         self.Schottky_input_win_len.on_change('value', update_win_len)
         # EC on: set velocity
-        self.Schottky_checkbox_ec_on = Checkbox(label='EC on', height=25, active=False)
-        self.Schottky_input_gamma_setting = NumericInput(value=self.iid.gamma_setting, height=50, low=1.0001, high=5.0000, mode='float', title='γ setting', disabled=True)
+        self.Schottky_checkbox_ec_on = Checkbox(label='EC on', height=25, active=False, stylesheets=[self.set_styles['checkbox']])
+        self.Schottky_input_gamma_setting = NumericInput(value=self.iid.gamma_setting, height=50, low=1.0001, high=5.0000, mode='float', title='γ setting', disabled=True, stylesheets=[self.set_styles['numericinput']])
         m_over_q = self.iid.Brho / self.iid.gamma_setting / np.sqrt(1 - 1/self.iid.gamma_setting**2) / self.iid.c / self.iid.u2kg * self.iid.e
-        self.Schottky_input_mass_over_charge = NumericInput(value=m_over_q, height=50, low=0., high=100., mode='float', title='m/q', disabled=True)
-        self.Schottky_input_delta_v_over_v = NumericInput(value=self.iid.delta_v_over_v, height=50, low=1e-8, high=1e-5, mode='float', title='Δv/v', disabled=True)
-        self.Schottky_input_min_sigma_f = NumericInput(value=self.iid.min_sigma_f, height=50, low=1e-5, high=10, mode='float', title='minimum σ(f) [Hz]', disabled=True)
-        self.Schottky_button_set_velocity = Button(label='set', height=50, width=80, button_type='primary', disabled=True)
+        self.Schottky_input_mass_over_charge = NumericInput(value=m_over_q, height=50, low=0., high=100., mode='float', title='m/q', disabled=True, stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_delta_v_over_v = NumericInput(value=self.iid.delta_v_over_v, height=50, low=1e-8, high=1e-5, mode='float', title='Δv/v', disabled=True, stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_min_sigma_f = NumericInput(value=self.iid.min_sigma_f, height=50, low=1e-5, high=10, mode='float', title='minimum σ(f) [Hz]', disabled=True, stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_button_set_velocity = Button(label='set', height=50, width=100, button_type='primary', disabled=True, stylesheets=[self.set_styles['button']])
         def set_velocity():
             if self.Schottky_checkbox_ec_on.active:
                 print('set EC ...')
@@ -532,8 +556,8 @@ class Bokeh_show():
                 self.Schottky_select_harmonic.options = harmonic_values.astype(str).tolist()
         self.Schottky_checkbox_ec_on.on_change('active', set_ec_on)
         # show only one harmonic
-        self.Schottky_checkbox_show_one_harmonic = Checkbox(label='one harmonic on', height=50, active=False)
-        self.Schottky_select_harmonic = Select(title='harmonic:', value='', options=[])
+        self.Schottky_checkbox_show_one_harmonic = Checkbox(label='one harmonic on', height=50, active=False, stylesheets=[self.set_styles['checkbox']])
+        self.Schottky_select_harmonic = Select(title='harmonic:', value='', options=[], stylesheets=[self.set_styles['numericinput']])
         def show_one_harmonic(attr, old, new):
             if self.Schottky_checkbox_show_one_harmonic.active:
                 try:
@@ -556,9 +580,9 @@ class Bokeh_show():
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
         ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
-        self.Schottky_input_ion = AutocompleteInput(completions=ion_completion, title='ion')
-        self.Schottky_button_find_ion = Button(label='find', height=50, width=80, button_type='primary')
-        self.Schottky_div_log = Div(text='', width=500, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll'})
+        self.Schottky_input_ion = AutocompleteInput(completions=ion_completion, title='ion', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_button_find_ion = Button(label='find', height=50, width=100, button_type='primary', stylesheets=[self.set_styles['button']])
+        self.Schottky_div_log = Div(text='', width=800, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll', 'font-size': '20px'})
         def find_ion():
             if self.Schottky_input_ion.value != '':
                 ion, isometric = self.Schottky_input_ion.value.split('(')
@@ -591,8 +615,8 @@ class Bokeh_show():
                     self.Schottky_ions_default_source.selected.indices = [index[0]]
         self.Schottky_button_find_ion.on_event(ButtonClick, find_ion)
         # calibrate of ion
-        self.Schottky_input_peakloc = NumericInput(value=0, height=50, low=-1e4, high=1e4, mode='float', title='peak location [kHz]', disabled=True)
-        self.Schottky_button_calibrate = Button(label='calibrate', height=50, width=80, button_type='primary', disabled=True)
+        self.Schottky_input_peakloc = NumericInput(value=0, height=50, low=-1e4, high=1e4, mode='float', title='peak location [kHz]', disabled=True, stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_button_calibrate = Button(label='calibrate', height=50, width=100, button_type='primary', disabled=True, stylesheets=[self.set_styles['button']])
         def calibrate_Brho():
             try:
                 print('calibrate ion peak loc ...')
@@ -603,15 +627,15 @@ class Bokeh_show():
                 self._log('warning: select one ion in Schottky spectrum for peak location calibrate first!')
         self.Schottky_button_calibrate.on_event(ButtonClick, calibrate_Brho)
         # show threshold / label / log scale
-        self.Schottky_checkbox_figure_threshold = Checkbox(label='Using figure threshold', height=25, active=True)
-        self.Schottky_checkbox_weight_threshold = Checkbox(label='Using weight threshold', height=25, active=False)
-        self.Schottky_input_show_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold')
-        self.Schottky_input_labels_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold for labels')
-        self.Schottky_checkbox_labels_on = Checkbox(label='show labels', height=25, active=False)
+        self.Schottky_checkbox_figure_threshold = Checkbox(label='Using figure threshold', height=25, active=True, stylesheets=[self.set_styles['checkbox']])
+        self.Schottky_checkbox_weight_threshold = Checkbox(label='Using weight threshold', height=25, active=False, stylesheets=[self.set_styles['checkbox']])
+        self.Schottky_input_show_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_labels_threshold = NumericInput(value=1e-2, low=1e-16, high=1e16, height=50, mode='float', title='threshold for labels', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_checkbox_labels_on = Checkbox(label='show labels', height=25, active=False, stylesheets=[self.set_styles['checkbox']])
         def threshold_switch_figure(attr, old, new):
             if new:
                 self.Schottky_checkbox_weight_threshold.active = False
-                print('swith to Schottky figure threshold ...')
+                print('switch to Schottky figure threshold ...')
                 self._update(1, 'ISO', None)
                 if self.Schottky_checkbox_ec_on.active:
                     self._update(1, 'EC', None)
@@ -623,8 +647,9 @@ class Bokeh_show():
                 self.Schottky_checkbox_weight_threshold.active = True
         def threshold_switch_weight(attr, old, new):
             if new:
+                self._log('switch to Schottky weight threshold ...')
                 self.Schottky_checkbox_figure_threshold.active = False
-                print('swith to Schottky weight threshold ...')
+                print('switch to Schottky weight threshold ...')
                 self._update(1, 'ISO', None)
                 if self.Schottky_checkbox_ec_on.active:
                     self._update(1, 'EC', None)
@@ -637,6 +662,7 @@ class Bokeh_show():
         self.Schottky_checkbox_figure_threshold.on_change('active', threshold_switch_figure)
         self.Schottky_checkbox_weight_threshold.on_change('active', threshold_switch_weight)
         def set_show_threshold(attr, old, new):
+            self._log('setting Schottky threshold ...')
             print('setting Schottky threshold ...')
             self._update(1, 'ISO', None)
             if self.Schottky_checkbox_ec_on.active:
@@ -676,7 +702,7 @@ class Bokeh_show():
                 self.Schottky_labels_EC.visible = False
         self.Schottky_checkbox_labels_on.on_change('active', set_labels_on)
 
-        self.Schottky_checkbox_log_on = Checkbox(label='log on', height=25, active=True)
+        self.Schottky_checkbox_log_on = Checkbox(label='log on', height=25, active=True, stylesheets=[self.set_styles['checkbox']])
         def set_log_on(attr, old, new):
             if self.Schottky_checkbox_log_on.active:
                 self.Schottky_spectrum_default_log.visible = True
@@ -711,11 +737,18 @@ class Bokeh_show():
         ]
         # default spectrum (log scale) 
         self.Schottky_spectrum_default_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.Schottky_spectrum_default_log.title.text_font_size = '25px'
         self.Schottky_spectrum_default_log.tools[-1].tooltips = ion_tooltip
         self.Schottky_spectrum_default_log.tools[-1].attachment = 'vertical'
         self.Schottky_spectrum_default_log.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_default_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.Schottky_spectrum_default_log.yaxis.axis_label = "psd [arb. unit]"
+        self.Schottky_spectrum_default_log.xaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_default_log.xaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_default_log.xaxis.axis_label_text_font_style = 'bold'
+        self.Schottky_spectrum_default_log.yaxis.axis_label = "weight / frequency [pps/kHz]"
+        self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_default_log.yaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_style = 'bold'
         Schottky_log_default_ions = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='darkgray')
         self.Schottky_spectrum_default_log.line(x='x', y='y', source=self.Schottky_line_default_source, color='black')
         Schottky_log_default_harmonic = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_default_source, color='goldenrod')
@@ -723,11 +756,18 @@ class Bokeh_show():
         self.Schottky_spectrum_default_log.tools[-1].renderers = [Schottky_log_default_ions, Schottky_log_default_harmonic]
         # default spectrum (linear scale) 
         self.Schottky_spectrum_default_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.Schottky_spectrum_default_log.x_range, output_backend='webgl')
+        self.Schottky_spectrum_default_linear.title.text_font_size = '25px'
         self.Schottky_spectrum_default_linear.tools[-1].tooltips = ion_tooltip
         self.Schottky_spectrum_default_linear.tools[-1].attachment = 'vertical'
         self.Schottky_spectrum_default_linear.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_default_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.Schottky_spectrum_default_linear.yaxis.axis_label = "psd [arb. unit]"
+        self.Schottky_spectrum_default_linear.xaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_default_linear.xaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_default_linear.xaxis.axis_label_text_font_style = 'bold'
+        self.Schottky_spectrum_default_linear.yaxis.axis_label = "weight / frequency [pps/kHz]"
+        self.Schottky_spectrum_default_linear.yaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_default_linear.yaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_default_linear.yaxis.axis_label_text_font_style = 'bold'
         Schottky_linear_default_ions = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='darkgray')
         self.Schottky_spectrum_default_linear.line(x='x', y='y', source=self.Schottky_line_default_source, color='black')
         Schottky_linear_default_harmonic = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_default_source, color='goldenrod')
@@ -742,26 +782,29 @@ class Bokeh_show():
         self.Schottky_select_harmonic.options = harmonic_values.astype(str).tolist()
         # default yield heatmap
         self.Schottky_heatmap_yield_default = figure(width=600, height=600, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.Schottky_heatmap_yield_default.title.text_font_size = '25px'
+        self.Schottky_heatmap_yield_default.xaxis.major_label_text_font_size = '14px'
+        self.Schottky_heatmap_yield_default.yaxis.major_label_text_font_size = '14px'
         self.Schottky_heatmap_yield_default.rect(x='N', y='Z', fill_color='color', source=self.Schottky_ions_default_source, line_color='lightgray', width=1., height=1.0)
         try:
             yield_top = int(np.log10(np.max(self.Schottky_ions_default_source.data['total_yield'])))
         except:
             yield_top = 1
         self.Schottky_colorBar_default = LogColorMapper(palette=Category10_9, high=10**(yield_top-8), low=10**(yield_top+1))
-        color_bar_default = ColorBar(color_mapper=self.Schottky_colorBar_default)
+        color_bar_default = ColorBar(color_mapper=self.Schottky_colorBar_default, major_label_text_font_size='14px')
         self.Schottky_heatmap_yield_default.add_layout(color_bar_default, "above")
         # default ion table
         columns = [
                 TableColumn(field='ion', title='ion'),
                 TableColumn(field='isometric', title='isometric state'),
                 TableColumn(field='half_life', title='half life'),
-                TableColumn(field='weight', title='weight'),
-                TableColumn(field='yield', title='yield'),
+                TableColumn(field='weight', title='weight', formatter=ScientificFormatter(precision=5)),
+                TableColumn(field='yield', title='yield', formatter=ScientificFormatter(precision=5)),
                 TableColumn(field='harmonic', title='harmonic'),
-                TableColumn(field='peak_loc', title='peak loc [kHz]'),
-                TableColumn(field='rev_freq', title='rev freq [MHz]')
+                TableColumn(field='peak_loc', title='peak loc [kHz]', formatter=NumberFormatter(format='0[.]0000')),
+                TableColumn(field='rev_freq', title='rev freq [MHz]', formatter=NumberFormatter(format='0[.]000000'))
         ]
-        self.Schottky_table_default = DataTable(source=self.Schottky_ions_default_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell.selected {background-color: #F1B6B9;}')])
+        self.Schottky_table_default = DataTable(source=self.Schottky_ions_default_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-cell.selected {background-color: #F1B6B9;} .slick-header-column {height: 20px; font-size: 16px;}')])
         # default select function
         def selected_ion_default(attr, old, new):
             try:
@@ -790,11 +833,18 @@ class Bokeh_show():
         self.Schottky_harmonic_EC_source = ColumnDataSource(data=data_harmonic)
         # ecooler spectrum (log scale) 
         self.Schottky_spectrum_EC_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.Schottky_spectrum_EC_log.title.text_font_size = '25px'
         self.Schottky_spectrum_EC_log.tools[-1].tooltips = ion_tooltip
         self.Schottky_spectrum_EC_log.tools[-1].attachment = 'vertical'
         self.Schottky_spectrum_EC_log.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_EC_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.Schottky_spectrum_EC_log.yaxis.axis_label = "psd [arb. unit]"
+        self.Schottky_spectrum_EC_log.xaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_EC_log.xaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_EC_log.xaxis.axis_label_text_font_style = 'bold'
+        self.Schottky_spectrum_EC_log.yaxis.axis_label = "weight / frequency [pps/kHz]"
+        self.Schottky_spectrum_EC_log.yaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_EC_log.yaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_EC_log.yaxis.axis_label_text_font_style = 'bold'
         Schottky_log_EC_ions = self.Schottky_spectrum_EC_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.Schottky_ions_EC_source, color='deepskyblue')
         self.Schottky_spectrum_EC_log.line(x='x', y='y', source=self.Schottky_line_EC_source, color='lightskyblue')
         Schottky_log_EC_harmonic = self.Schottky_spectrum_EC_log.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_EC_source, color='goldenrod')
@@ -805,11 +855,18 @@ class Bokeh_show():
             pass
         # EC spectrum (linear scale) 
         self.Schottky_spectrum_EC_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.Schottky_spectrum_EC_log.x_range, output_backend='webgl')
+        self.Schottky_spectrum_EC_linear.title.text_font_size = '25px'
         self.Schottky_spectrum_EC_linear.tools[-1].tooltips = ion_tooltip
         self.Schottky_spectrum_EC_linear.tools[-1].attachment = 'vertical'
         self.Schottky_spectrum_EC_linear.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_EC_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.Schottky_spectrum_EC_linear.yaxis.axis_label = "psd [arb. unit]"
+        self.Schottky_spectrum_EC_linear.xaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_EC_linear.xaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_EC_linear.xaxis.axis_label_text_font_style = 'bold'
+        self.Schottky_spectrum_EC_linear.yaxis.axis_label = "weight / frequency [pps/kHz]"
+        self.Schottky_spectrum_EC_linear.yaxis.axis_label_text_font_size = '16px'
+        self.Schottky_spectrum_EC_linear.yaxis.major_label_text_font_size = '14px'
+        self.Schottky_spectrum_EC_linear.yaxis.axis_label_text_font_style = 'bold'
         Schottky_linear_EC_ions = self.Schottky_spectrum_EC_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.Schottky_ions_EC_source, color='deepskyblue')
         self.Schottky_spectrum_EC_linear.line(x='x', y='y', source=self.Schottky_line_EC_source, color='lightskyblue')
         Schottky_linear_EC_harmonic = self.Schottky_spectrum_EC_linear.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_EC_source, color='goldenrod')
@@ -824,16 +881,19 @@ class Bokeh_show():
         self.Schottky_spectrum_EC_linear.add_layout(self.Schottky_labels_EC)
         # EC yield heatmap
         self.Schottky_heatmap_yield_EC = figure(width=600, height=600, title='Ion Yield', tools='pan, box_zoom, tap, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save', x_range=(-0.5,177.5), y_range=(-0.5,118.5), aspect_ratio=1., tooltips=ion_tooltip, output_backend='webgl')
+        self.Schottky_heatmap_yield_EC.title.text_font_size = '25px'
+        self.Schottky_heatmap_yield_EC.xaxis.major_label_text_font_size = '14px'
+        self.Schottky_heatmap_yield_EC.yaxis.major_label_text_font_size = '14px'
         self.Schottky_heatmap_yield_EC.rect(x='N', y='Z', fill_color='color', source=self.Schottky_ions_EC_source, line_color='lightgray', width=1., height=1.0)
         try:
             yield_top = int(np.log10(np.max(self.Schottky_ions_EC_source.data['total_yield'])))
         except:
             yield_top = 1
         self.Schottky_colorBar_EC = LogColorMapper(palette=Category10_9, high=10**(yield_top-8), low=10**(yield_top+1))
-        color_bar_EC = ColorBar(color_mapper=self.Schottky_colorBar_EC)
+        color_bar_EC = ColorBar(color_mapper=self.Schottky_colorBar_EC, major_label_text_font_size='14px')
         self.Schottky_heatmap_yield_EC.add_layout(color_bar_EC, "above")
         # EC ion table
-        self.Schottky_table_EC = DataTable(source=self.Schottky_ions_EC_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-row.odd {background-color: #C5E6F9;} .slick-cell.selected {background-color: #CFF9A8;}')])
+        self.Schottky_table_EC = DataTable(source=self.Schottky_ions_EC_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-row.odd {background-color: #C5E6F9;} .slick-cell.selected {background-color: #CFF9A8;} .slick-header-column {height: 20px; font-size: 16px;}')])
         # EC select function
         def selected_ion_EC(attr, old, new):
             try:
@@ -854,28 +914,28 @@ class Bokeh_show():
         # tab
         self.Schottky_tabpanel_default = TabPanel(child=row([column([self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log, self.Schottky_table_default]), self.Schottky_heatmap_yield_default]), title='EC off')
         self.Schottky_tabpanel_EC = TabPanel(child=row([column([self.Schottky_spectrum_EC_linear, self.Schottky_spectrum_EC_log, self.Schottky_table_EC]), self.Schottky_heatmap_yield_EC]), title='EC on')
-        self.Schottky_tabs = Tabs(tabs=[self.Schottky_tabpanel_default, self.Schottky_tabpanel_EC])
+        self.Schottky_tabs = Tabs(tabs=[self.Schottky_tabpanel_default, self.Schottky_tabpanel_EC], stylesheets=[self.set_styles['tabs']])
 
     def _panel_control(self, mode='both'):
         # length of Ring
-        self.MAIN_input_L_CSRe = NumericInput(value=self.iid.L_CSRe, height=50, low=10, high=400, mode='float', title='length of Ring [m]')
+        self.MAIN_input_L_CSRe = NumericInput(value=self.iid.L_CSRe, height=50, low=10, high=400, mode='float', title='length of Ring [m]', stylesheets=[self.set_styles['numericinput']])
         # ΔBρ/Bρ
-        self.MAIN_input_delta_Brho_over_Brho = NumericInput(value=self.iid.delta_Brho_over_Brho, height=50, low=0.01, high=10.00, mode='float', title='ΔΒρ/Βρ, %')
+        self.MAIN_input_delta_Brho_over_Brho = NumericInput(value=self.iid.delta_Brho_over_Brho, height=50, low=0.01, high=10.00, mode='float', title='ΔΒρ/Βρ, %', stylesheets=[self.set_styles['numericinput']])
         # γt (αp)
-        self.MAIN_input_gamma_t = NumericInput(value=self.iid.gamma_t, height=50, low=0.0001, high=5.0000, mode='float', title='γt')
-        self.MAIN_input_alpha_p = NumericInput(value=1/self.iid.gamma_t**2, height=50, low=0.04, high=0.99999, mode='float', title='αp')
+        self.MAIN_input_gamma_t = NumericInput(value=self.iid.gamma_t, height=50, low=0.0001, high=5.0000, mode='float', title='γt', stylesheets=[self.set_styles['numericinput']])
+        self.MAIN_input_alpha_p = NumericInput(value=1/self.iid.gamma_t**2, height=50, low=0.04, high=0.99999, mode='float', title='αp', stylesheets=[self.set_styles['numericinput']])
         # minimum sigma T
-        self.MAIN_input_min_sigma_t = NumericInput(value=self.iid.min_sigma_t, height=50, low=0.01, high=10., mode='float', title='minimum σ(T) [ps]')
+        self.MAIN_input_min_sigma_t = NumericInput(value=self.iid.min_sigma_t, height=50, low=0.01, high=10., mode='float', title='minimum σ(T) [ps]', stylesheets=[self.set_styles['numericinput']])
         # Βρ calibration
-        self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True)
-        self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]')
+        self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True, stylesheets=[self.set_styles['checkbox']])
+        self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])
         
         # calculate 
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
         ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
-        self.MAIN_select_calc_ion = Select(options=ion_completion, value=ion_completion[2], title='targeted ion', height=50)
-        self.MAIN_input_calc_gamma_t = NumericInput(value=self.iid.gamma_t, low=0.0001, high=5.0000, height=50, mode='float', title='γt')
-        self.MAIN_input_calc_Brho = NumericInput(value=1., height=50, low=1., high=15., mode='float', title='Bρ [Tm]')        
+        self.MAIN_select_calc_ion = Select(options=ion_completion, value=ion_completion[2], title='targeted ion', height=50, stylesheets=[self.set_styles['numericinput']])
+        self.MAIN_input_calc_gamma_t = NumericInput(value=self.iid.gamma_t, low=0.0001, high=5.0000, height=50, mode='float', title='γt', stylesheets=[self.set_styles['numericinput']])
+        self.MAIN_input_calc_Brho = NumericInput(value=1., height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])        
         def change_ion(attr, old, new):
             ion, isometric = self.MAIN_select_calc_ion.value.split('(')
             mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchone()
@@ -899,10 +959,10 @@ class Bokeh_show():
         self.MAIN_input_calc_gamma_t.on_change('value', calc_Brho)
         self.MAIN_input_calc_Brho.on_change('value', calc_gamma_t)
         self.MAIN_input_calc_Brho.value = self.iid.Brho        
-        self.calc_tab = Tabs(tabs=[TabPanel(child=row([self.MAIN_select_calc_ion, column([self.MAIN_input_calc_gamma_t, self.MAIN_input_calc_Brho])]), title='Ion Calculation')])
+        self.calc_tab = Tabs(tabs=[TabPanel(child=row([self.MAIN_select_calc_ion, column([self.MAIN_input_calc_gamma_t, self.MAIN_input_calc_Brho])]), title='Ion Calculation')], stylesheets=[self.set_styles['tabs']])
 
         # status
-        self.MAIN_div_log = Div(text='', width=360, height=50, background='darkorange')
+        self.MAIN_div_log = Div(text='', width=415, height=60, styles={'background-color':'darkorange', 'font-size':'20px'})
 
         if mode == 'TOF':
             def update_L_CSRe(attr, old, new):
@@ -1091,7 +1151,7 @@ class Bokeh_show():
             # tabs
             self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
 
-            self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel])
+            self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel], stylesheets=[self.set_styles['tabs']])
             
             self.TOF_spectrum_linear.visible = False
             self.TOF_labels.visible = False
@@ -1102,7 +1162,7 @@ class Bokeh_show():
             self._panel_control('Schottky')
             self.Schottky_tabpanel = TabPanel(child=column([row([self.Schottky_input_cen_freq, self.Schottky_input_loc_osil, self.Schottky_input_span, self.Schottky_input_sampling_rate, self.Schottky_input_win_len]), row([self.Schottky_input_gamma_setting, self.Schottky_input_mass_over_charge, self.Schottky_input_delta_v_over_v, self.Schottky_input_min_sigma_f, self.Schottky_button_set_velocity]), self.Schottky_checkbox_ec_on, row([self.Schottky_checkbox_figure_threshold, self.Schottky_checkbox_weight_threshold]), row([column([self.Schottky_input_show_threshold, self.Schottky_checkbox_log_on]), column([self.Schottky_input_labels_threshold, self.Schottky_checkbox_labels_on]), column([self.Schottky_select_harmonic, self.Schottky_checkbox_show_one_harmonic])]), row([self.Schottky_input_peakloc, self.Schottky_button_calibrate, self.Schottky_input_ion, self.Schottky_button_find_ion, self.Schottky_div_log]), self.Schottky_tabs]), title='Schottky')
 
-            self.MAIN_tab = Tabs(tabs=[self.Schottky_tabpanel])
+            self.MAIN_tab = Tabs(tabs=[self.Schottky_tabpanel], stylesheets=[self.set_styles['tabs']])
 
             self.Schottky_spectrum_default_linear.visible = False
             self.Schottky_spectrum_EC_linear.visible = False
@@ -1120,7 +1180,7 @@ class Bokeh_show():
             self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
             self.Schottky_tabpanel = TabPanel(child=column([row([self.Schottky_input_cen_freq, self.Schottky_input_loc_osil, self.Schottky_input_span, self.Schottky_input_sampling_rate, self.Schottky_input_win_len]), row([self.Schottky_input_gamma_setting, self.Schottky_input_mass_over_charge, self.Schottky_input_delta_v_over_v, self.Schottky_input_min_sigma_f, self.Schottky_button_set_velocity]), self.Schottky_checkbox_ec_on, row([self.Schottky_checkbox_figure_threshold, self.Schottky_checkbox_weight_threshold]), row([column([self.Schottky_input_show_threshold, self.Schottky_checkbox_log_on]), column([self.Schottky_input_labels_threshold, self.Schottky_checkbox_labels_on]), column([self.Schottky_select_harmonic, self.Schottky_checkbox_show_one_harmonic])]), row([self.Schottky_input_peakloc, self.Schottky_button_calibrate, self.Schottky_input_ion, self.Schottky_button_find_ion, self.Schottky_div_log]), self.Schottky_tabs]), title='Schottky')
             
-            self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel, self.Schottky_tabpanel])
+            self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel, self.Schottky_tabpanel], stylesheets=[self.set_styles['tabs']])
 
             self.Schottky_spectrum_default_linear.visible = False
             self.Schottky_spectrum_EC_linear.visible = False
