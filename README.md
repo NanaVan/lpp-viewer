@@ -13,8 +13,7 @@ webside address: [China/Overseas](https://lpp-viewer.pages.dev/)
 * local requirement: Bokeh(Panel) server 
 * Usage: 
 ```shell
-> cd .\stand-alone
-> bokeh serve --show .\main.py
+> bokeh serve .\stand-alone
 ```
 
 ## Additional tool: ion data generator from .\database-maker
