@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from bokeh.plotting import figure, curdoc, show
-from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs, LabelSet, Select, ScientificFormatter, NumberFormatter
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, ColorBar, LogColorMapper, NumericInput, AutocompleteInput, Button, Div, HoverTool, InlineStyleSheet, Checkbox, TabPanel, Tabs, LabelSet, Select, ScientificFormatter, NumberFormatter, CustomJS
 from bokeh.events import ButtonClick
 from bokeh.layouts import layout, row, column, Spacer
 from bokeh.palettes import Category10_9
@@ -313,6 +313,7 @@ class Bokeh_show():
                 self._update(1, 'TOF', None)
                 if self.TOF_checkbox_labels_on.active:
                     self._update(0, 'TOF')
+                self.MAIN_button_reset.visible = True
                 print('setting complete!')
                 self._log('setting TOF figure threshold complete!')
             else:
@@ -324,6 +325,7 @@ class Bokeh_show():
                 self._update(1, 'TOF', None)
                 if self.TOF_checkbox_labels_on.active:
                     self._update(0, 'TOF')
+                self.MAIN_button_reset.visible = True
                 print('setting complete!')
                 self._log('setting TOF yield threshold complete!')
             else:
@@ -333,6 +335,7 @@ class Bokeh_show():
         def set_show_threshold(attr, old, new):
             print('setting TOF threshold ...')
             self._update(1, 'TOF', None)
+            self.MAIN_button_reset.visible = True
             print('setting complete!')
             self._log('setting TOF threshold complete!')
         self.TOF_input_show_threshold.on_change('value', set_show_threshold)
@@ -475,6 +478,7 @@ class Bokeh_show():
                 self._update(1, 'EC', None)
             if self.Schottky_checkbox_show_one_harmonic.active:
                 self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+            self.MAIN_button_reset.visible = True
             print('update complete!')
             self._log('update center frequency / local osillator complete!')
         self.Schottky_input_cen_freq.on_change('value', update_cen_freq)
@@ -498,6 +502,7 @@ class Bokeh_show():
                 self._update(1, 'EC', None)
             if self.Schottky_checkbox_show_one_harmonic.active:
                 self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+            self.MAIN_button_reset.visible = True
             print('update complete!')
             self._log('update span / sampling rate complete!')
         self.Schottky_input_span.on_change('value', update_span)
@@ -512,6 +517,7 @@ class Bokeh_show():
                 self._update(1, 'EC', None)
             if self.Schottky_checkbox_show_one_harmonic.active:
                 self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+            self.MAIN_button_reset.visible = True
             print('update complete!')
             self._log('update window length complete!')
         self.Schottky_input_win_len.on_change('value', update_win_len)
@@ -531,6 +537,7 @@ class Bokeh_show():
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
                 print('set EC complete!')
+                self.MAIN_button_reset.visible = True
                 self._log('setting EC complete!')
         self.Schottky_button_set_velocity.on_event(ButtonClick, set_velocity)
         def update_gamma_setting(attr, old, new):
@@ -564,18 +571,21 @@ class Bokeh_show():
                     self._update(1, 'ISO', int(self.Schottky_select_harmonic.value))
                     if self.Schottky_checkbox_ec_on.active:
                         self._update(1, 'EC', int(self.Schottky_select_harmonic.value))
+                    self.MAIN_button_reset.visible = True
                 except:
                     self._log("You have not selected a specific harmonic yet!")
             else:
                 self._update(1, 'ISO', None)
                 if self.Schottky_checkbox_ec_on.active:
                     self._update(1, 'EC', None)
+                self.MAIN_button_reset.visible = True
         self.Schottky_checkbox_show_one_harmonic.on_change('active', show_one_harmonic)
         def change_harmonic(attr, old, new):
             if self.Schottky_checkbox_show_one_harmonic.active:
                 self._update(1, 'ISO', int(self.Schottky_select_harmonic.value))
                 if self.Schottky_checkbox_ec_on.active:
                     self._update(1, 'EC', int(self.Schottky_select_harmonic.value))
+                self.MAIN_button_reset.visible = True
         self.Schottky_select_harmonic.on_change('value', change_harmonic)
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
@@ -641,6 +651,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('setting complete!')
                 self._log('setting Schottky figure threshold complete!')
             else:
@@ -655,6 +666,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('setting complete!')
                 self._log('setting Schottky weight threshold complete!')
             else:
@@ -669,6 +681,7 @@ class Bokeh_show():
                 self._update(1, 'EC', None)
             if self.Schottky_checkbox_show_one_harmonic.active:
                 self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+            self.MAIN_button_reset.visible = True
             print('setting complete!')
             self._log('setting Schottky threshold complete!')
         self.Schottky_input_show_threshold.on_change('value', set_show_threshold)
@@ -929,6 +942,8 @@ class Bokeh_show():
         # Βρ calibration
         self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True, stylesheets=[self.set_styles['checkbox']])
         self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])
+        # reset button (after data update)
+        self.MAIN_button_reset = Button(label='please click this button to make the figure fit', height=40, width=415, button_type='danger', stylesheets=[self.set_styles['button']], visible=False)
         
         # calculate 
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
@@ -969,12 +984,14 @@ class Bokeh_show():
                 print('update length of Ring ...')
                 self.iid.update_L_CSRe(float(new), False)
                 self._update(1, 'TOF', None)
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update length of Ring complete!')
             def update_delta_Brho_over_Brho(attr, old, new):
                 print('update ΔΒρ/Βρ ...')
                 self.iid.update_delta_Brho_over_Brho(float(new), False)
                 self._update(1, 'TOF', None)
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update ΔΒρ/Βρ complete!')
             def update_gamma_t(attr, old, new):
@@ -982,18 +999,21 @@ class Bokeh_show():
                 print('update γt ...')
                 self.iid.update_gamma_t(float(new), False)
                 self._update(1, 'TOF', None)
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update γt / αp complete!')
             def update_min_delta_t(attr, old, new):
                 print('update minimum σ(T) ...')
                 self.iid.update_min_delta_t(float(new), False)
                 self._update(1, 'TOF', None)
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update minimum σ(T) complete!')
             def update_Brho(attr, old, new):
                 print('calibrate Brho ...')
                 self.iid.calibrate_Brho(float(new), False)
                 self._update(1, 'TOF', None)
+                self.MAIN_button_reset.visible = True
                 print('calibrate complete!')
                 self._log('calibrate Bρ complete!')
             def set_Brho_on(attr, old, new):
@@ -1001,7 +1021,12 @@ class Bokeh_show():
                     self.MAIN_input_Brho.disabled = False
                 else:
                     self.MAIN_input_Brho.disabled = True
-            
+            def reset_figure():
+                self.TOF_input_x_start.value = 620
+                self.TOF_input_x_end.value = 640
+                self.MAIN_button_reset.visible = False
+            plot = [self.TOF_spectrum_linear, self.TOF_spectrum_log]
+
         elif mode == 'Schottky':
             def update_L_CSRe(attr, old, new):
                 print('update length of Ring ...')
@@ -1011,6 +1036,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update length of Ring complete!')
             def update_delta_Brho_over_Brho(attr, old, new):
@@ -1021,8 +1047,9 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
-                    print('update complete!')
-                    self._log('update ΔΒρ/Βρ complete!')
+                self.MAIN_button_reset.visible = True
+                print('update complete!')
+                self._log('update ΔΒρ/Βρ complete!')
             def update_gamma_t(attr, old, new):
                 self.MAIN_input_alpha_p.value = 1/float(new)**2
                 print('update γt ...')
@@ -1032,6 +1059,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update γt / αp complete!')
             def update_min_delta_t(attr, old, new):
@@ -1042,6 +1070,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update minimum σ(T) complete!')
             def update_Brho(attr, old, new):
@@ -1052,6 +1081,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('calibrate complete!')
                 self._log('calibrate Bρ complete!')
             def set_Brho_on(attr, old, new):
@@ -1061,6 +1091,12 @@ class Bokeh_show():
                 else:
                     self.Schottky_input_peakloc.disabled = False
                     self.Schottky_button_calibrate.disabled = False
+            def reset_figure():
+                self.MAIN_button_reset.visible = False
+            if self.Schottky_checkbox_ec_on.active:
+                plot = [self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log, self.Schottky_spectrum_EC_linear, self.Schottky_spectrum_EC_log]
+            else:
+                plot = [self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log]
     
         else:
             def update_L_CSRe(attr, old, new):
@@ -1072,6 +1108,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update length of Ring complete!')
             def update_delta_Brho_over_Brho(attr, old, new):
@@ -1083,8 +1120,9 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
-                    print('update complete!')
-                    self._log('update ΔΒρ/Βρ complete!')
+                self.MAIN_button_reset.visible = True
+                print('update complete!')
+                self._log('update ΔΒρ/Βρ complete!')
             def update_gamma_t(attr, old, new):
                 self.MAIN_input_alpha_p.value = 1/float(new)**2
                 print('update γt ...')
@@ -1095,6 +1133,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update γt / αp complete!')
             def update_min_delta_t(attr, old, new):
@@ -1106,6 +1145,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('update complete!')
                 self._log('update minimum σ(T) complete!')
             def update_Brho(attr, old, new):
@@ -1117,6 +1157,7 @@ class Bokeh_show():
                     self._update(1, 'EC', None)
                 if self.Schottky_checkbox_show_one_harmonic.active:
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
+                self.MAIN_button_reset.visible = True
                 print('calibrate complete!')
                 self._log('calibrate Bρ complete!')
             def set_Brho_on(attr, old, new):
@@ -1128,9 +1169,26 @@ class Bokeh_show():
                     self.Schottky_input_peakloc.disabled = False
                     self.Schottky_button_calibrate.disabled = False
                     self.MAIN_input_Brho.disabled = True
+            def reset_figure():
+                self.TOF_input_x_start.value = 620
+                self.TOF_input_x_end.value = 640
+                self.MAIN_button_reset.visible = False
+            if self.Schottky_checkbox_ec_on.active:
+                plot = [self.TOF_spectrum_linear, self.TOF_spectrum_log, self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log, self.Schottky_spectrum_EC_linear, self.Schottky_spectrum_EC_log]
+            else:
+                plot = [self.TOF_spectrum_linear, self.TOF_spectrum_log, self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log]
 
         def update_alpha_p(attr, old, new):
             self.MAIN_input_gamma_t.value = 1/np.sqrt(float(new))
+
+        self.MAIN_button_reset.js_on_click(CustomJS(args=dict(plot=plot), code='''
+            export default ({plot}, _button, _data, {index}) => {
+                for (const p of plot) {
+                    index.get_one(p).reset();
+                }
+            }'''))
+        self.MAIN_button_reset.on_event(ButtonClick, reset_figure)
+            
 
         self.MAIN_input_L_CSRe.on_change('value', update_L_CSRe)
         self.MAIN_input_delta_Brho_over_Brho.on_change('value', update_delta_Brho_over_Brho)
@@ -1190,7 +1248,7 @@ class Bokeh_show():
             self.TOF_labels.visible = False
         print('Bokeh: initial complete!')
         self._log('Bokeh: initial complete')
-        return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), self.MAIN_checkbox_Brho]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
+        return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), row([self.MAIN_checkbox_Brho, Spacer(width=210), self.MAIN_button_reset])]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
 
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('TOF'))
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('Schottky'))
