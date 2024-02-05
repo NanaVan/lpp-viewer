@@ -486,7 +486,7 @@ class Bokeh_show():
             self.Schottky_input_cen_freq.value = float(new) + float(self.Schottky_input_span.value) / 2e3
         self.Schottky_input_loc_osil.on_change('value', update_loc_osil)
         def update_span(attr, old, new):
-            self.Schottky_input_sampling_rate.value = float(new) / 1.25
+            self.Schottky_input_sampling_rate.value = float(new) * 1.25
             print('update span ...')
             self.iid.update_span(float(new), self.Schottky_checkbox_ec_on.active)
             self.Schottky_spectrum_default_log.x_range.start = - float(new) / 2
@@ -507,7 +507,7 @@ class Bokeh_show():
             self._log('update span / sampling rate complete!')
         self.Schottky_input_span.on_change('value', update_span)
         def update_sampling_rate(attr, old, new):
-            self.Schottky_input_span.value = float(new) * 1.25
+            self.Schottky_input_span.value = float(new) / 1.25
         self.Schottky_input_sampling_rate.on_change('value', update_sampling_rate)
         def update_win_len(attr, old, new):
             print('update window length ...')
@@ -943,7 +943,7 @@ class Bokeh_show():
         self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True, stylesheets=[self.set_styles['checkbox']])
         self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])
         # reset button (after data update)
-        self.MAIN_button_reset = Button(label='please click this button to make the figure fit', height=40, width=415, button_type='danger', stylesheets=[self.set_styles['button']], visible=False)
+        self.MAIN_button_reset = Button(label='please click this button to make the figure fit', height=40, width=445, button_type='danger', stylesheets=[self.set_styles['button']], visible=False)
         
         # calculate 
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
@@ -977,7 +977,7 @@ class Bokeh_show():
         self.calc_tab = Tabs(tabs=[TabPanel(child=row([self.MAIN_select_calc_ion, column([self.MAIN_input_calc_gamma_t, self.MAIN_input_calc_Brho])]), title='Ion Calculation')], stylesheets=[self.set_styles['tabs']])
 
         # status
-        self.MAIN_div_log = Div(text='', width=415, height=60, styles={'background-color':'darkorange', 'font-size':'20px'})
+        self.MAIN_div_log = Div(text='', width=445, height=60, styles={'background-color':'darkorange', 'font-size':'20px'})
 
         if mode == 'TOF':
             def update_L_CSRe(attr, old, new):
@@ -1248,7 +1248,7 @@ class Bokeh_show():
             self.TOF_labels.visible = False
         print('Bokeh: initial complete!')
         self._log('Bokeh: initial complete')
-        return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), row([self.MAIN_checkbox_Brho, Spacer(width=210), self.MAIN_button_reset])]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
+        return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), row([self.MAIN_checkbox_Brho, Spacer(width=244), self.MAIN_button_reset])]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
 
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('TOF'))
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('Schottky'))

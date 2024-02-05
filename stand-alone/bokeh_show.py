@@ -486,7 +486,7 @@ class Bokeh_show():
             self.Schottky_input_cen_freq.value = float(new) + float(self.Schottky_input_span.value) / 2e3
         self.Schottky_input_loc_osil.on_change('value', update_loc_osil)
         def update_span(attr, old, new):
-            self.Schottky_input_sampling_rate.value = float(new) / 1.25
+            self.Schottky_input_sampling_rate.value = float(new) * 1.25
             print('update span ...')
             self.iid.update_span(float(new), self.Schottky_checkbox_ec_on.active)
             self.Schottky_spectrum_default_log.x_range.start = - float(new) / 2
@@ -507,7 +507,7 @@ class Bokeh_show():
             self._log('update span / sampling rate complete!')
         self.Schottky_input_span.on_change('value', update_span)
         def update_sampling_rate(attr, old, new):
-            self.Schottky_input_span.value = float(new) * 1.25
+            self.Schottky_input_span.value = float(new) / 1.25
         self.Schottky_input_sampling_rate.on_change('value', update_sampling_rate)
         def update_win_len(attr, old, new):
             print('update window length ...')
