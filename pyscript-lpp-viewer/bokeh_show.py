@@ -224,6 +224,8 @@ class Bokeh_show():
                 self.TOF_spectrum_log.y_range.start = np.min(line['y'])
                 self.TOF_spectrum_linear.y_range.start = np.min(line['y']) - 1
                 self.TOF_plot.y_range.start = self.iid.min_sigma_t - 0.1
+                result = self.iid.cur.execute("SELECT sum(YIELD) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end)).fetchone()[0]
+                self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [pps]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
                 return
             data_harmonic =  self._wrap_data(None, None, None)
             if harmonic is None:
@@ -271,6 +273,7 @@ class Bokeh_show():
         self.TOF_input_ion = AutocompleteInput(completions=ion_completion, title='ion', stylesheets=[self.set_styles['numericinput']]) 
         self.TOF_button_find_ion = Button(label='find', height=50, width=80, button_type='primary', stylesheets=[self.set_styles['button']])
         self.TOF_div_log = Div(text='', width=800, height=50, styles={'background-color':'lightcyan', 'overflow-y':'scroll', 'font-size':'20px'})
+        self.TOF_div_yield_X_range = Div(text='', width=1000, height=50, styles={'font-size':'16px', 'text-align':'center'})
         def find_ion():
             if self.TOF_input_ion.value !='':
                 ion, isometric = self.TOF_input_ion.value.split('(')
@@ -296,6 +299,8 @@ class Bokeh_show():
             if float(self.TOF_input_x_end.value) > float(self.TOF_input_x_start.value):
                 self.TOF_spectrum_log.x_range.start = float(self.TOF_input_x_start.value)
                 self.TOF_spectrum_log.x_range.end = float(self.TOF_input_x_end.value)
+                result = self.iid.cur.execute("SELECT sum(YIELD) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_linear.x_range.start, self.TOF_spectrum_linear.x_range.end)).fetchone()[0]
+                self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [pps]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
             else:
                 self._log('wrong setting for x range in TOF spectrum!')
         self.TOF_input_x_start.on_change('value', change_x_range)
@@ -393,6 +398,8 @@ class Bokeh_show():
         self.TOF_spectrum_log.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_log.y_range.start = np.min(self.TOF_line_source.data['y'])
         self.TOF_spectrum_log.tools[-1].renderers = [TOF_log_ions]
+        result = self.iid.cur.execute("SELECT sum(yield) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end)).fetchone()[0]
+        self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [pps]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
         # spectrum (linear scale)
         self.TOF_spectrum_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
         self.TOF_spectrum_linear.title.text_font_size = '25px'
@@ -943,7 +950,7 @@ class Bokeh_show():
         self.MAIN_checkbox_Brho = Checkbox(label='Using Bρ for calibrate', height=20, active=True, stylesheets=[self.set_styles['checkbox']])
         self.MAIN_input_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])
         # reset button (after data update)
-        self.MAIN_button_reset = Button(label='please click this button to make the figure fit', height=40, width=445, button_type='danger', stylesheets=[self.set_styles['button']], visible=False)
+        self.MAIN_button_reset = Button(label='please click this button to make the figure fit', height=40, width=415, button_type='danger', stylesheets=[self.set_styles['button']], visible=False)
         
         # calculate 
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
@@ -977,7 +984,7 @@ class Bokeh_show():
         self.calc_tab = Tabs(tabs=[TabPanel(child=row([self.MAIN_select_calc_ion, column([self.MAIN_input_calc_gamma_t, self.MAIN_input_calc_Brho])]), title='Ion Calculation')], stylesheets=[self.set_styles['tabs']])
 
         # status
-        self.MAIN_div_log = Div(text='', width=445, height=60, styles={'background-color':'darkorange', 'font-size':'20px'})
+        self.MAIN_div_log = Div(text='', width=415, height=60, styles={'background-color':'darkorange', 'font-size':'20px'})
 
         if mode == 'TOF':
             def update_L_CSRe(attr, old, new):
@@ -1207,7 +1214,7 @@ class Bokeh_show():
             self._panel_control('TOF')
 
             # tabs
-            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
+            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
 
             self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel], stylesheets=[self.set_styles['tabs']])
             
@@ -1235,7 +1242,7 @@ class Bokeh_show():
             self._panel_control()
 
             # tabs
-            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
+            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
             self.Schottky_tabpanel = TabPanel(child=column([row([self.Schottky_input_cen_freq, self.Schottky_input_loc_osil, self.Schottky_input_span, self.Schottky_input_sampling_rate, self.Schottky_input_win_len]), row([self.Schottky_input_gamma_setting, self.Schottky_input_mass_over_charge, self.Schottky_input_delta_v_over_v, self.Schottky_input_min_sigma_f, self.Schottky_button_set_velocity]), self.Schottky_checkbox_ec_on, row([self.Schottky_checkbox_figure_threshold, self.Schottky_checkbox_weight_threshold]), row([column([self.Schottky_input_show_threshold, self.Schottky_checkbox_log_on]), column([self.Schottky_input_labels_threshold, self.Schottky_checkbox_labels_on]), column([self.Schottky_select_harmonic, self.Schottky_checkbox_show_one_harmonic])]), row([self.Schottky_input_peakloc, self.Schottky_button_calibrate, self.Schottky_input_ion, self.Schottky_button_find_ion, self.Schottky_div_log]), self.Schottky_tabs]), title='Schottky')
             
             self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel, self.Schottky_tabpanel], stylesheets=[self.set_styles['tabs']])
@@ -1248,7 +1255,7 @@ class Bokeh_show():
             self.TOF_labels.visible = False
         print('Bokeh: initial complete!')
         self._log('Bokeh: initial complete')
-        return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), row([self.MAIN_checkbox_Brho, Spacer(width=244), self.MAIN_button_reset])]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
+        return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), row([self.MAIN_checkbox_Brho, Spacer(width=210), self.MAIN_button_reset])]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
 
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('TOF'))
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('Schottky'))
