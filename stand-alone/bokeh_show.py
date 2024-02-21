@@ -27,6 +27,38 @@ class Bokeh_show():
         '''
         self.iid = IID(lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v, L_CSRe, False)
         self.set_styles = {'checkbox': InlineStyleSheet(css='span {font-size: 20px;}'), 'numericinput': InlineStyleSheet(css='.bk-input-group {font-size: 18px;} .bk-input {font-size: 16px;}'), 'tabs': InlineStyleSheet(css='.bk-tab {font-size: 25px; font-weight: bold;}'), 'button': InlineStyleSheet(css='.bk-btn-group button {font-size: 20px;}')}
+        self.js_save_dataTable = """
+            var data = source.data;
+            var filetext = [columns.join(',')].shift().concat('\\n');
+            var nrows = source.get_length();
+
+            for (let i=0; i < nrows; i++) {
+                let currRow = [];
+                for (let j=0; j < columns.length; j++) {
+                    var column = columns[j];
+                    currRow.push(source.data[column][i].toString());
+                }
+                currRow = currRow.concat('\\n')
+                var joined = currRow.join();
+                filetext = filetext.concat(joined);
+            }
+
+            var filename = 'data_output.csv'
+            var blob = new Blob([filetext], { type: 'text/csv;charset=utf-8;'});
+
+            // addresses IE
+            if (navigator.msSaveBlob) {
+                navigator.msSaveBlob(blob, filename);
+            }else{
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.target = '_blank';
+                link.style.visibility = 'hidden';
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+        """
         
     def _log(self, status, tab_position='MAIN'):
         '''
@@ -365,6 +397,9 @@ class Bokeh_show():
                 self.TOF_spectrum_log.visible = False
                 self.TOF_spectrum_linear.visible = True
         self.TOF_checkbox_log_on.on_change('active', set_log_on)
+        
+        # save data table as .csv
+        self.TOF_button_save_datatable = Button(label='Download table as .csv', height=50, width=200, button_type='warning', stylesheets=[self.set_styles['button']])
                 
     def _initial_TOF(self):
         data, line = self._wrap_data('TOF', None, False)
@@ -464,6 +499,7 @@ class Bokeh_show():
                 TableColumn(field='source', title='mass source')
         ]
         self.TOF_table = DataTable(source=self.TOF_ions_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-cell.selected {background-color: #F1B6B9;} .slick-header-column {height: 20px; font-size: 16px;}')])
+        self.TOF_button_save_datatable.js_on_click(CustomJS(args=dict(source=self.TOF_table.source, columns=['ion', 'isometric', 'half_life', 'yield', 'rev_time', 'type', 'source']), code=self.js_save_dataTable))
         
     def _panel_Schottky(self):
         # center frequency (local osillator) / span (sampling rate) / window length
@@ -736,6 +772,9 @@ class Bokeh_show():
                 self.Schottky_spectrum_EC_linear.visible = True
         self.Schottky_checkbox_log_on.on_change('active', set_log_on)
         
+        # save data table as .csv
+        self.Schottky_button_save_datatable_default = Button(label='Download table as .csv', height=50, width=200, button_type='warning', stylesheets=[self.set_styles['button']])
+        self.Schottky_button_save_datatable_EC = Button(label='Download table as .csv', height=50, width=200, button_type='warning', stylesheets=[self.set_styles['button']])
 
     def _initial_Schottky(self):
         # default
@@ -825,6 +864,7 @@ class Bokeh_show():
                 TableColumn(field='rev_freq', title='rev freq [MHz]', formatter=NumberFormatter(format='0[.]000000'))
         ]
         self.Schottky_table_default = DataTable(source=self.Schottky_ions_default_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-cell.selected {background-color: #F1B6B9;} .slick-header-column {height: 20px; font-size: 16px;}')])
+        self.Schottky_button_save_datatable_default.js_on_click(CustomJS(args=dict(source=self.Schottky_table_default.source, columns=['ion', 'isometric', 'half_life', 'weight', 'yield', 'harmonic', 'peak_loc', 'rev_freq']), code=self.js_save_dataTable))
         # default select function
         def selected_ion_default(attr, old, new):
             try:
@@ -914,6 +954,7 @@ class Bokeh_show():
         self.Schottky_heatmap_yield_EC.add_layout(color_bar_EC, "above")
         # EC ion table
         self.Schottky_table_EC = DataTable(source=self.Schottky_ions_EC_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-row.odd {background-color: #C5E6F9;} .slick-cell.selected {background-color: #CFF9A8;} .slick-header-column {height: 20px; font-size: 16px;}')])
+        self.Schottky_button_save_datatable_EC.js_on_click(CustomJS(args=dict(source=self.Schottky_table_EC.source, columns=['ion', 'isometric', 'half_life', 'weight', 'yield', 'harmonic', 'peak_loc', 'rev_freq']), code=self.js_save_dataTable))
         # EC select function
         def selected_ion_EC(attr, old, new):
             try:
@@ -932,8 +973,8 @@ class Bokeh_show():
                 pass
         self.Schottky_ions_EC_source.selected.on_change('indices', selected_ion_EC) 
         # tab
-        self.Schottky_tabpanel_default = TabPanel(child=row([column([self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log, self.Schottky_table_default]), self.Schottky_heatmap_yield_default]), title='EC off')
-        self.Schottky_tabpanel_EC = TabPanel(child=row([column([self.Schottky_spectrum_EC_linear, self.Schottky_spectrum_EC_log, self.Schottky_table_EC]), self.Schottky_heatmap_yield_EC]), title='EC on')
+        self.Schottky_tabpanel_default = TabPanel(child=row([column([self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log, self.Schottky_table_default, self.Schottky_button_save_datatable_default]), self.Schottky_heatmap_yield_default]), title='EC off')
+        self.Schottky_tabpanel_EC = TabPanel(child=row([column([self.Schottky_spectrum_EC_linear, self.Schottky_spectrum_EC_log, self.Schottky_table_EC, self.Schottky_button_save_datatable_EC]), self.Schottky_heatmap_yield_EC]), title='EC on')
         self.Schottky_tabs = Tabs(tabs=[self.Schottky_tabpanel_default, self.Schottky_tabpanel_EC], stylesheets=[self.set_styles['tabs']])
 
     def _panel_control(self, mode='both'):
@@ -1214,7 +1255,7 @@ class Bokeh_show():
             self._panel_control('TOF')
 
             # tabs
-            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table]), self.TOF_heatmap_yield])]), title='TOF')
+            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
 
             self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel], stylesheets=[self.set_styles['tabs']])
             
