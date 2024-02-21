@@ -21,7 +21,9 @@ async def process_file(event):
             except:
                 print('.lpp format error!')
                 markdown_words.object = '## Upload and parse your .lpp file'
-                pn.pane.Alert('## Alert\n### Some error may exist in your .lpp file. Please check your file first.\nFormat of .lpp is encoded as utf-8, please change to CP932', alert_type='danger').servable(target='testShow')
+                _alert.visible = True
+                _alert.object = '## Alert\n### Some error may exist in your .lpp file. Please check your file first.\nFormat of .lpp is encoded as utf-8, please change to CP932'
+                _alert.alert_type = 'danger'
                 return
             try:
                 print('Bokeh: loading...')
