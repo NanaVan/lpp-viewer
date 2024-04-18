@@ -324,19 +324,6 @@ class Bokeh_show():
                     return
                 self.TOF_ions_source.selected.indices = [index[0]]
         self.TOF_button_find_ion.on_event(ButtonClick, find_ion)
-        # change x range
-        self.TOF_input_x_start = NumericInput(value=620, low=500, high=700, height=50, mode='float', title='revolution start [ns]', stylesheets=[self.set_styles['numericinput']])
-        self.TOF_input_x_end = NumericInput(value=640, low=510, high=800, height=50, mode='float', title='revolution end [ns]', stylesheets=[self.set_styles['numericinput']])
-        def change_x_range(attr, old, new):
-            if float(self.TOF_input_x_end.value) > float(self.TOF_input_x_start.value):
-                self.TOF_spectrum_log.x_range.start = float(self.TOF_input_x_start.value)
-                self.TOF_spectrum_log.x_range.end = float(self.TOF_input_x_end.value)
-                result = self.iid.cur.execute("SELECT sum(YIELD) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_linear.x_range.start, self.TOF_spectrum_linear.x_range.end)).fetchone()[0]
-                self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [pps]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
-            else:
-                self._log('wrong setting for x range in TOF spectrum!')
-        self.TOF_input_x_start.on_change('value', change_x_range)
-        self.TOF_input_x_end.on_change('value', change_x_range)
         # show threshold / label / log scale
         self.TOF_checkbox_figure_threshold = Checkbox(label='Using figure threshold', height=25, active=True, stylesheets=[self.set_styles['checkbox']])
         self.TOF_checkbox_yield_threshold = Checkbox(label='Using yield threshold', height=25, active=False, stylesheets=[self.set_styles['checkbox']])
@@ -397,6 +384,38 @@ class Bokeh_show():
                 self.TOF_spectrum_log.visible = False
                 self.TOF_spectrum_linear.visible = True
         self.TOF_checkbox_log_on.on_change('active', set_log_on)
+        # change x range
+        self.TOF_input_x_start = NumericInput(value=620, low=500, high=700, height=50, mode='float', title='revolution start [ns]', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_input_x_end = NumericInput(value=640, low=510, high=800, height=50, mode='float', title='revolution end [ns]', stylesheets=[self.set_styles['numericinput']])
+        def change_x_range(attr, old, new):
+            if float(self.TOF_input_x_end.value) > float(self.TOF_input_x_start.value):
+                if self.TOF_checkbox_log_on.active:
+                    self.TOF_spectrum_log.x_range.start = float(self.TOF_input_x_start.value)
+                    self.TOF_spectrum_log.x_range.end = float(self.TOF_input_x_end.value)
+                else:
+                    self.TOF_spectrum_linear.x_range.start = float(self.TOF_input_x_start.value)
+                    self.TOF_spectrum_linear.x_range.end = float(self.TOF_input_x_end.value)
+                result = self.iid.cur.execute("SELECT sum(YIELD) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_linear.x_range.start, self.TOF_spectrum_linear.x_range.end)).fetchone()[0]
+                self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [pps]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
+            else:
+                self._log('wrong setting for x range in TOF spectrum!')
+        self.TOF_input_x_start.on_change('value', change_x_range)
+        self.TOF_input_x_end.on_change('value', change_x_range)
+        # change y range
+        self.TOF_input_y_start = NumericInput(value=0, low=0, high=1e12, height=50, mode='float', title='y start [pps/ns]', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_input_y_end = NumericInput(value=0, low=0, high=1e12, height=50, mode='float', title='y end [pps/ns]', stylesheets=[self.set_styles['numericinput']])
+        def change_y_range(attr, old, new):
+            if float(self.TOF_input_y_end.value) > float(self.TOF_input_y_start.value):
+                if self.TOF_checkbox_log_on.active:
+                    self.TOF_spectrum_log.y_range.start = float(self.TOF_input_y_start.value)
+                    self.TOF_spectrum_log.y_range.end = float(self.TOF_input_y_end.value)
+                else:
+                    self.TOF_spectrum_linear.y_range.start = float(self.TOF_input_y_start.value)
+                    self.TOF_spectrum_linear.y_range.end = float(self.TOF_input_y_end.value)
+            else:
+                self._log('wrong setting for y range in TOF spectrum!')
+        self.TOF_input_y_start.on_change('value', change_y_range)
+        self.TOF_input_y_end.on_change('value', change_y_range)
         
         # save data table as .csv
         self.TOF_button_save_datatable = Button(label='Download table as .csv', height=50, width=200, button_type='warning', stylesheets=[self.set_styles['button']])
@@ -432,6 +451,9 @@ class Bokeh_show():
         TOF_log_ions = self.TOF_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
         self.TOF_spectrum_log.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_log.y_range.start = np.min(self.TOF_line_source.data['y'])
+        self.TOF_spectrum_log.y_range.end = np.max(self.TOF_line_source.data['y']) + 10
+        self.TOF_input_y_start.value = np.min(self.TOF_line_source.data['y'])
+        self.TOF_input_y_end.value = np.max(self.TOF_line_source.data['y']) + 10
         self.TOF_spectrum_log.tools[-1].renderers = [TOF_log_ions]
         result = self.iid.cur.execute("SELECT sum(yield) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end)).fetchone()[0]
         self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [pps]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
@@ -451,7 +473,8 @@ class Bokeh_show():
         self.TOF_spectrum_linear.yaxis.axis_label_text_font_style = 'bold'
         TOF_linear_ions = self.TOF_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
         self.TOF_spectrum_linear.line(x='x', y='y', source=self.TOF_line_source, color='black')
-        self.TOF_spectrum_linear.y_range.start = np.min(self.TOF_line_source.data['y']) - 1.
+        self.TOF_spectrum_linear.y_range.start = np.min(self.TOF_line_source.data['y'])
+        self.TOF_spectrum_linear.y_range.end = np.max(self.TOF_line_source.data['y']) + 10
         self.TOF_spectrum_linear.tools[-1].renderers = [TOF_linear_ions]
         # σ(T) plot
         self.TOF_plot = figure(width=1000, height=300, title='σ(T)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
@@ -1255,7 +1278,7 @@ class Bokeh_show():
             self._panel_control('TOF')
 
             # tabs
-            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
+            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end, self.TOF_input_ion, self.TOF_input_y_start, self.TOF_input_y_end]), row([self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
 
             self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel], stylesheets=[self.set_styles['tabs']])
             
