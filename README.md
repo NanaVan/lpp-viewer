@@ -16,7 +16,7 @@ webside address: [China/Overseas](https://lpp-viewer.pages.dev/)
 ```shell
 > bokeh serve .\stand-alone
 ```
-2. open browser and visit [https://localhost:5006/stand-alone](https://localhost:5006/stand-alone)
+2. open browser and visit [http://localhost:5006/stand-alone](https://localhost:5006/stand-alone)
 
 ## Additional tool: ion data generator from .\database-maker
 generate ion data `ionic_data.db` from NUBASE2020 and NIST binding energy file
