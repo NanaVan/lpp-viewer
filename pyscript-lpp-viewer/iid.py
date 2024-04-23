@@ -32,7 +32,7 @@ class IID():
         gamma_t:                the gamma_t value for isochronous mode
         min_sigma_t:            the minimum sigma t for isochronous mode, [ps]
         min_sigma_f:            the minimum sigma f for e-cooling, [Hz]
-        delta_Brho_over_Brho:   the ΔBrho/Brho for isochronous mode, [%]
+        delta_Brho_over_Brho:   the ΔBrho/Brho for isochronous mode, [%] (assuming that only 99.73% of ions entering the ring because of the cut of Brho limitation, delta Brho over Brho approx. 6-sigma of the ion Brho distributio)
         gamma_setting:          the velocity (gamma) for the e-cooler setting
         delta_v_over_v:         the Δv/v for the e-cooler setting, represent the e-cooler capacity of cooling
         '''
@@ -48,7 +48,7 @@ class IID():
         self.delta_v_over_v = delta_v_over_v # %
         self.L_CSRe = L_CSRe # m
         self.verbose = verbose
-        self.conn = sqlite3.connect("./ionic_data.db")
+        self.conn = sqlite3.connect("./stand-alone/ionic_data.db")
         self.cur = self.conn.cursor()
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -197,8 +197,8 @@ class IID():
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
-            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho * rev_freq[i] * 10 * harmonics + self.min_sigma_t * rev_freq[i]**2 * 1e-3 * harmonics # kHz
-            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho *1e-2 * rev_time[i]  + self.min_sigma_t * 1e-3 # ns
+            peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho / 6 * rev_freq[i] * 10 * harmonics + self.min_sigma_t * rev_freq[i]**2 * 1e-3 * harmonics # kHz
+            rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho / 6 *1e-2 * rev_time[i]  + self.min_sigma_t * 1e-3 # ns
             rev_time_peak_max = ion_yield[i] * erf(0.001 / rev_time_peak_sig / np.sqrt(2)) / 0.002 # 2 ps / point for TOF
             if update_TOF:
                 self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
