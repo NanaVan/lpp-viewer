@@ -84,7 +84,7 @@ class Bokeh_show():
         '''
         threshold = 1e-16
         x_shift_left, x_shift_right = x_range - (x_range[1] - x_range[0])/2, x_range + (x_range[1] - x_range[0])/2
-        y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig)) / (x_range[1] - x_range[0])
+        y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig))
         # cut off with threshold
         x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[-1]])])
         x_start, x_end = peak_loc - np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area)), peak_loc + np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area))
@@ -220,7 +220,7 @@ class Bokeh_show():
                 line['y'] = []
                 line['sig_y'] = []
             else:
-                x_range = np.arange(500, 800, step=0.002).astype(np.float32) # channel = 2 ps
+                x_range = np.arange(600, 650, step=0.0001).astype(np.float32) # channel = 0.1 ps
                 xs, ys, y = [], [], []
                 for peak_area, peak_sig, peak_loc in zip(data['yield'], data['peak_sig'], data['rev_time']):
                     temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig*1e-3, peak_area, x_range)
@@ -441,7 +441,7 @@ class Bokeh_show():
                 ("source", '@source')
         ]
         # spectrum (log scale)
-        self.TOF_spectrum_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms),    1 channel = 2 ps', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(float(self.TOF_input_x_start.value), float(self.TOF_input_x_end.value)), y_axis_type='log', output_backend='webgl')
+        self.TOF_spectrum_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms),    1 channel = 0.1 ps', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(float(self.TOF_input_x_start.value), float(self.TOF_input_x_end.value)), y_axis_type='log', output_backend='webgl')
         self.TOF_spectrum_log.title.text_font_size = '25px'
         self.TOF_spectrum_log.tools[-1].tooltips = ion_tooltip
         self.TOF_spectrum_log.tools[-1].attachment = 'vertical'
@@ -464,7 +464,7 @@ class Bokeh_show():
         result = self.iid.cur.execute("SELECT sum(yield) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end)).fetchone()[0]
         self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [ppp]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
         # spectrum (linear scale)
-        self.TOF_spectrum_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms),    1 channel = 2 ps', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
+        self.TOF_spectrum_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms),    1 channel = 0.1 ps', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
         self.TOF_spectrum_linear.title.text_font_size = '25px'
         self.TOF_spectrum_linear.tools[-1].tooltips = ion_tooltip
         self.TOF_spectrum_linear.tools[-1].attachment = 'vertical'
@@ -809,8 +809,8 @@ class Bokeh_show():
                 self.Schottky_spectrum_EC_linear.visible = True
         self.Schottky_checkbox_log_on.on_change('active', set_log_on)
         # change y range
-        self.Schottky_input_y_start = NumericInput(value=0, low=0, high=1e20, height=50, mode='float', title='y start [ppp]', stylesheets=[self.set_styles['numericinput']])
-        self.Schottky_input_y_end = NumericInput(value=0, low=0, high=1e20, height=50, mode='float', title='y end [ppp]', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_y_start = NumericInput(value=0, low=0, high=1e20, height=50, mode='float', title='y start [arb. unit]', stylesheets=[self.set_styles['numericinput']])
+        self.Schottky_input_y_end = NumericInput(value=0, low=0, high=1e20, height=50, mode='float', title='y end [arb. unit]', stylesheets=[self.set_styles['numericinput']])
         def change_y_range(attr, old, new):
             if float(self.Schottky_input_y_end.value) > float(self.Schottky_input_y_start.value):
                 if self.Schottky_checkbox_log_on.active:
@@ -866,7 +866,7 @@ class Bokeh_show():
         self.Schottky_spectrum_default_log.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_log.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_log.xaxis.axis_label_text_font_style = 'bold'
-        self.Schottky_spectrum_default_log.yaxis.axis_label = "power(Q" + r"$$^2$$" + "f"+ r"$$^2$$" + "count)" + " / channel [ppp]"        
+        self.Schottky_spectrum_default_log.yaxis.axis_label = r"noise power(Q$$^2$$f$$^2$$count) [arb. unit]"        
         self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_log.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_style = 'bold'
@@ -889,7 +889,7 @@ class Bokeh_show():
         self.Schottky_spectrum_default_linear.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_linear.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_linear.xaxis.axis_label_text_font_style = 'bold'
-        self.Schottky_spectrum_default_linear.yaxis.axis_label = "power(Q" + r"$$^2$$" + "f"+ r"$$^2$$" + "count)" + " / channel [ppp]"        
+        self.Schottky_spectrum_default_linear.yaxis.axis_label = r"noise power(Q$$^2$$f$$^2$$count) [arb. unit]"        
         self.Schottky_spectrum_default_linear.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_linear.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_linear.yaxis.axis_label_text_font_style = 'bold'
@@ -969,7 +969,7 @@ class Bokeh_show():
         self.Schottky_spectrum_EC_log.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_log.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_log.xaxis.axis_label_text_font_style = 'bold'
-        self.Schottky_spectrum_EC_log.yaxis.axis_label = "power(Q" + r"$$^2$$" + "f"+ r"$$^2$$" + "count)" + " / channel [ppp]"   
+        self.Schottky_spectrum_EC_log.yaxis.axis_label = r"noise power(Q$$^2$$f$$^2$$count) [arb. unit]"   
         self.Schottky_spectrum_EC_log.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_log.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_log.yaxis.axis_label_text_font_style = 'bold'
@@ -993,7 +993,7 @@ class Bokeh_show():
         self.Schottky_spectrum_EC_linear.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_linear.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_linear.xaxis.axis_label_text_font_style = 'bold'
-        self.Schottky_spectrum_EC_linear.yaxis.axis_label = "power(Q" + r"$$^2$$" + "f"+ r"$$^2$$" + "count)" + " / channel [ppp]"   
+        self.Schottky_spectrum_EC_linear.yaxis.axis_label = r"noise power(Q$$^2$$f$$^2$$count) [arb. unit]"   
         self.Schottky_spectrum_EC_linear.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_linear.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_linear.yaxis.axis_label_text_font_style = 'bold'
