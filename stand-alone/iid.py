@@ -20,7 +20,7 @@ class IID():
     time_unit = {'Yy': 31536000*1e24, 'Zy': 31536000*1e21, 'Ey': 31536000*1e18, 'Py': 31536000*1e15, 'Ty': 31536000*1e12, 'Gy': 31536000*1e9, 'My': 31536000*1e6, 'ky': 31536000*1e3, 'y': 31536000, 'd': 86400, 'h': 3600, 'm': 60, 's': 1, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9, 'ps': 1e-12, 'fs': 1e-15, 'as': 1e-18, 'zs': 1e-21, 'ys': 1e-24}
 
     
-    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
+    def __init__(self, lppion, cen_freq, span, win_len, interval_revT, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v=1e-6, L_CSRe=128.8, verbose=False):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
@@ -28,6 +28,7 @@ class IID():
         cen_freq:   center frequency of the spectrum in MHz
         span:       span of the spectrum in kHz
         win_len:    window length of the spectrum
+        interval_revT:  interval of the ToF spectrum in ps
         L_CSRe:     circumference of CSRe in m, default value 128.8
         gamma_t:                the gamma_t value for isochronous mode
         min_sigma_t:            the minimum sigma t for isochronous mode, [ps]
@@ -40,6 +41,7 @@ class IID():
         self.cen_freq = cen_freq # MHz
         self.span = span # kHz, sampling rate = 1.25 * span
         self.win_len = win_len
+        self.interval_revT = interval_revT # ps
         self.gamma_t = gamma_t
         self.delta_Brho_over_Brho = delta_Brho_over_Brho # %
         self.gamma_setting = gamma_setting
@@ -199,7 +201,7 @@ class IID():
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
             peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho / 6 * rev_freq[i] * 10 * harmonics + self.min_sigma_t * rev_freq[i]**2 * 1e-3 * harmonics # kHz
             rev_time_peak_sig = np.abs(1 / gamma[i]**2 - 1 / self.gamma_t**2) * self.delta_Brho_over_Brho / 6 *1e-2 * rev_time[i]  + self.min_sigma_t * 1e-3 # ns
-            rev_time_peak_max = ion_yield[i] * erf(0.00005 / rev_time_peak_sig / np.sqrt(2)) # 0.1 ps / point for TOF
+            rev_time_peak_max = ion_yield[i] * erf(self.interval_revT/2*1e-3 / rev_time_peak_sig / np.sqrt(2)) #  points for TOF
             if update_TOF:
                 self.cur.execute("INSERT INTO TOFION(ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,GAMMA,REVTIME,PEAKSIG,PEAKMAX) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*temp, gamma[i], rev_time[i], rev_time_peak_sig, rev_time_peak_max))
             # filter harmonics
@@ -297,6 +299,15 @@ class IID():
         result = [self.cur.execute("SELECT sum(yield), N, Z FROM OBSERVEDION WHERE N=? AND Z=? AND ISOMERIC='0'", _result).fetchone() for _result in result]
         self.cur.executemany("UPDATE ECOOLERION SET TOTALYIELD=? WHERE N=? AND Z=?", result)
         self.conn.commit()
+
+    def update_interval_revT(self, interval_revT, ec_on=False):
+        '''
+        using the specific interval_revT to update whole data
+        '''
+        self.interval_revT = interval_revT
+        self.calc_isochronous_peak()
+        if ec_on:
+            self.calc_ecooler_peak()
 
     def update_gamma_t(self, gamma_t, ec_on=False):
         '''

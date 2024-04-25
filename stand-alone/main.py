@@ -25,28 +25,28 @@ async def process_file(event):
                 _alert.object = '## Alert\n### Some error may exist in your .lpp file. Please check your file first.\nFormat of .lpp is encoded as utf-8, please change to CP932'
                 _alert.alert_type = 'danger'
                 return
-            #try:
-            print('Bokeh: loading...')
-            if len(checkbutton_display.value) == 2:
-                show_Bokeh = Bokeh_show('./stand-alone/new.lpp', 243., 3000, 4096, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Both')
-            elif len(checkbutton_display.value) == 1 and 'TOF' in checkbutton_display.value:
-                show_Bokeh = Bokeh_show('./stand-alone/new.lpp', 243., 3000, 4096, 1.36, 0.2, 1.36, 0.5, 0.5)._show('TOF')
-            elif len(checkbutton_display.value) == 1 and 'Schottky' in checkbutton_display.value:
-                show_Bokeh = Bokeh_show('./stand-alone/new.lpp', 243., 3000, 4096, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Schottky')
-            else:
-                pass
-            print('Bokeh: complete')
-            _alert.visible = True
-            _alert.object = '## Info\n### The current interface is for functional testing only. \n### Please wait for the final version.'                
-            _alert.alert_type = 'primary'
-            _bokeh.object = show_Bokeh
-            markdown_words.object = '## Upload and parse your .lpp file'
-            #except:
-            #    print('.lpp file error!')
-            #    markdown_words.object = '## Upload and parse your .lpp file'
-            #    _alert.visible = True
-            #    _alert.object = '## Alert\n### Some error exist when parsing your .lpp file.\nYou can send your .lpp file to <u>wangqian2016@impcas.ac.cn</u> and ask for lpp-view issue solution.'
-            #    _alert.alert_type = 'warning'
+            try:
+                print('Bokeh: loading...')
+                if len(checkbutton_display.value) == 2:
+                    show_Bokeh = Bokeh_show('./stand-alone/new.lpp', 243., 3000, 4096, 0.1, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Both')
+                elif len(checkbutton_display.value) == 1 and 'TOF' in checkbutton_display.value:
+                    show_Bokeh = Bokeh_show('./stand-alone/new.lpp', 243., 3000, 4096, 0.1, 1.36, 0.2, 1.36, 0.5, 0.5)._show('TOF')
+                elif len(checkbutton_display.value) == 1 and 'Schottky' in checkbutton_display.value:
+                    show_Bokeh = Bokeh_show('./stand-alone/new.lpp', 243., 3000, 4096, 0.1, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Schottky')
+                else:
+                    pass
+                print('Bokeh: complete')
+                _alert.visible = True
+                _alert.object = '## Info\n### The current interface is for functional testing only. \n### Please wait for the final version.'                
+                _alert.alert_type = 'primary'
+                _bokeh.object = show_Bokeh
+                markdown_words.object = '## Upload and parse your .lpp file'
+            except:
+                print('.lpp file error!')
+                markdown_words.object = '## Upload and parse your .lpp file'
+                _alert.visible = True
+                _alert.object = '## Alert\n### Some error exist when parsing your .lpp file.\nYou can send your .lpp file to <u>wangqian2016@impcas.ac.cn</u> and ask for lpp-view issue solution.'
+                _alert.alert_type = 'warning'
         else:
             display_info.object = '## Alert\n### Select display mode first!'
             display_info.alert_type = 'warning'

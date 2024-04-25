@@ -26,11 +26,11 @@ async def process_file(event):
             try:
                 console.log('Bokeh: loading...')
                 if len(checkbutton_display.value) == 2:
-                    show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Both')
+                    show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 0.1, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Both')
                 elif len(checkbutton_display.value) == 1 and 'TOF' in checkbutton_display.value:
-                    show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 1.36, 0.2, 1.36, 0.5, 0.5)._show('TOF')
+                    show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 0.1, 1.36, 0.2, 1.36, 0.5, 0.5)._show('TOF')
                 elif len(checkbutton_display.value) == 1 and 'Schottky' in checkbutton_display.value:
-                    show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Schottky')
+                    show_Bokeh = Bokeh_show('new.lpp', 243., 3000, 4096, 0.1, 1.36, 0.2, 1.36, 0.5, 0.5)._show('Schottky')
                 else:
                     pass
                 console.log('Bokeh: complete')

@@ -15,14 +15,15 @@ class Bokeh_show():
     '''
     A bokeh to show the yield/weight heatmap with corresponding revolution and spectrum figure
     '''
-    def __init__(self, lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v=1e-6, L_CSRe=128.8):
+    def __init__(self, lppion, cen_freq, span, win_len, interval_revT, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v=1e-6, L_CSRe=128.8):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
         lppion:         LISE++ output file to be loaded
         cen_freq:       center frequency of the spectrum in MHz
         span:           span of the spectrum in kHz
-        win_len:    window length of the spectrum
+        win_len:        window length of the spectrum
+        interval_revT:  interval of the ToF spectrum in ps
         L_CSRe:     circumference of CSRe in m, default value 128.8
         gamma_t:                the gamma_t value for isochronous mode
         min_sigma_t:            the minimum sigma t for isochronous mode, [ps]
@@ -31,7 +32,7 @@ class Bokeh_show():
         gamma_setting:          the velocity (gamma) for the e-cooler setting
         delta_v_over_v:         the Δv/v for the e-cooler setting, represent the e-cooler capacity of cooling
         '''
-        self.iid = IID(lppion, cen_freq, span, win_len, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v, L_CSRe, False)
+        self.iid = IID(lppion, cen_freq, span, win_len, interval_revT, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v, L_CSRe, False)
         self.set_styles = {'checkbox': InlineStyleSheet(css='span {font-size: 20px;}'), 'numericinput': InlineStyleSheet(css='.bk-input-group {font-size: 18px;} .bk-input {font-size: 16px;}'), 'tabs': InlineStyleSheet(css='.bk-tab {font-size: 25px; font-weight: bold;}'), 'button': InlineStyleSheet(css='.bk-btn-group button {font-size: 20px;}')}
         self.js_save_dataTable = """
             var data = source.data;
@@ -77,12 +78,11 @@ class Bokeh_show():
         if tab_position == 'Schottky':
             self.Schottky_div_log.text = '{:}'.format(status)
 
-    def make_patches(self, peak_loc, peak_sig, peak_area, x_range):
+    def make_patches(self, peak_loc, peak_sig, peak_area, x_range, threshold):
         '''
         input Gaussian peak's peak location, sigma, and area to make a patches for discreting
         return xs, ys for hist-like patches, y_value
         '''
-        threshold = 1e-16
         x_shift_left, x_shift_right = x_range - (x_range[1] - x_range[0])/2, x_range + (x_range[1] - x_range[0])/2
         y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig))
         # cut off with threshold
@@ -92,9 +92,9 @@ class Bokeh_show():
         end_index = np.searchsorted(x_reset, x_end)
         try:
             start_index = 0 if start_index < 0 else start_index
-            start_index = start_index + 1 if y_value[start_index] < threshold else start_index 
+            start_index = start_index + 1 if y_value[start_index] <= threshold else start_index 
             end_index = len(x_range) if end_index == len(x_reset) else end_index
-            end_index = end_index - 1 if y_value[end_index-1] < threshold else end_index
+            end_index = end_index - 1 if y_value[end_index-1] <= threshold else end_index
             ys = y_value[start_index:end_index]
             xs = x_reset[start_index:end_index+1]
             ys = np.concatenate([np.tile(ys.reshape(-1), (2,1)).T.reshape(-1), np.array([threshold, threshold, ys[0]])])
@@ -164,7 +164,7 @@ class Bokeh_show():
                 x_range = np.fft.fftshift(np.fft.fftfreq(int(self.Schottky_input_win_len.value), 1/self.Schottky_input_span.value/1.25)).astype(np.float32)
                 xs, ys, y = [], [], []
                 for peak_area, peak_sig, peak_loc in zip(data['weight'], data['peak_sig'], data['peak_loc']):
-                    temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig, peak_area, x_range)
+                    temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig, peak_area, x_range, 1e-8)
                     xs.append(temp_xs)
                     ys.append(temp_ys)
                     y.append(temp_y)
@@ -220,10 +220,13 @@ class Bokeh_show():
                 line['y'] = []
                 line['sig_y'] = []
             else:
-                x_range = np.arange(600, 650, step=0.0001).astype(np.float32) # channel = 0.1 ps
+                result =  self.iid.cur.execute("SELECT min(REVTIME), max(REVTIME) FROM TOFION").fetchall()
+                x_start = np.floor(float(result[0][0])) - 0.5
+                y_start = np.ceil(float(result[0][1])) + 0.5
+                x_range = np.arange(x_start, y_start, step=self.iid.interval_revT*1e-3).astype(np.float32) # channel
                 xs, ys, y = [], [], []
                 for peak_area, peak_sig, peak_loc in zip(data['yield'], data['peak_sig'], data['rev_time']):
-                    temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig*1e-3, peak_area, x_range)
+                    temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig*1e-3, peak_area, x_range, 1)
                     xs.append(temp_xs)
                     ys.append(temp_ys)
                     y.append(temp_y)
@@ -305,6 +308,17 @@ class Bokeh_show():
         '''
         establish panel tab for TOP spectrum
         '''
+        # interval of ToF spectrum setting
+        self.TOF_input_interval_revT = NumericInput(value=self.iid.interval_revT, height=50, low=0.001, high=20, mode='float', title='interval of channel [ps]', stylesheets=[self.set_styles['numericinput']])
+        def update_interval_revT(attr, old, new):
+            self.TOF_spectrum_log.title.text = 'Simulated Spectrum (lifetime > 10 ms),    1 channel = {:} ps'.format(new)
+            self.TOF_spectrum_linear.title.text = 'Simulated Spectrum (lifetime > 10 ms),    1 channel = {:} ps'.format(new)
+            print('update channel interval ...')
+            self._update(1, 'TOF', None)
+            self.MAIN_button_reset.visible = True
+            print('update complete!')
+            self._log('update channel interval complete!')
+        self.TOF_input_interval_revT.on_change('value', update_interval_revT)
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
         ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
@@ -1326,7 +1340,7 @@ class Bokeh_show():
             self._panel_control('TOF')
 
             # tabs
-            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end]), row([self.TOF_input_y_start, self.TOF_input_y_end]), row([self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
+            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end]), row([self.TOF_input_y_start, self.TOF_input_y_end]), row([self.TOF_input_interval_revT]), row([self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
 
             self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel], stylesheets=[self.set_styles['tabs']])
             
@@ -1355,7 +1369,7 @@ class Bokeh_show():
             self._panel_control()
 
             # tabs
-            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end]), row([self.TOF_input_y_start, self.TOF_input_y_end]), row([self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
+            self.TOF_tabpanel = TabPanel(child=column([row([self.TOF_input_x_start, self.TOF_input_x_end]), row([self.TOF_input_y_start, self.TOF_input_y_end]), row([self.TOF_input_interval_revT]), row([self.TOF_input_ion, self.TOF_button_find_ion, self.TOF_div_log]), row([self.TOF_checkbox_figure_threshold, self.TOF_checkbox_yield_threshold]), row([self.TOF_input_show_threshold, self.TOF_input_labels_threshold]), row([self.TOF_checkbox_log_on, self.TOF_checkbox_labels_on]), row([column([self.TOF_spectrum_linear, self.TOF_spectrum_log, self.TOF_div_yield_X_range, self.TOF_plot, self.TOF_table, self.TOF_button_save_datatable]), self.TOF_heatmap_yield])]), title='TOF')
             self.Schottky_tabpanel = TabPanel(child=column([row([self.Schottky_input_cen_freq, self.Schottky_input_loc_osil, self.Schottky_input_span, self.Schottky_input_sampling_rate, self.Schottky_input_win_len]), row([self.Schottky_input_y_start, self.Schottky_input_y_end]), row([self.Schottky_input_gamma_setting, self.Schottky_input_mass_over_charge, self.Schottky_input_delta_v_over_v, self.Schottky_input_min_sigma_f, self.Schottky_button_set_velocity]), self.Schottky_checkbox_ec_on, row([self.Schottky_checkbox_figure_threshold, self.Schottky_checkbox_weight_threshold]), row([column([self.Schottky_input_show_threshold, self.Schottky_checkbox_log_on]), column([self.Schottky_input_labels_threshold, self.Schottky_checkbox_labels_on]), column([self.Schottky_select_harmonic, self.Schottky_checkbox_show_one_harmonic])]), row([self.Schottky_input_peakloc, self.Schottky_button_calibrate, self.Schottky_input_ion, self.Schottky_button_find_ion, self.Schottky_div_log]), self.Schottky_tabs]), title='Schottky')
             
             self.MAIN_tab = Tabs(tabs=[self.TOF_tabpanel, self.Schottky_tabpanel], stylesheets=[self.set_styles['tabs']])
