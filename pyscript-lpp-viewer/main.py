@@ -9,6 +9,7 @@ async def process_file(event):
     if input_file.value is not None:
         if checkbutton_display.value != []:
             markdown_words.object = '## Waiting for file parsing ...'
+            button_upload.disabled = True
             document.getElementById('fileShow').innerHTML = ""
             document.getElementById('testShow').innerHTML = ""
             lppion = input_file.value
@@ -37,6 +38,7 @@ async def process_file(event):
                 pn.pane.Alert('## Info\n### The current interface is for functional testing only. \n### Please wait for the final version.').servable(target='testShow')
                 pn.pane.Bokeh(show_Bokeh).servable(target='fileShow')
                 markdown_words.object = '## Upload and parse your .lpp file'
+                button_upload.disabled = False
             except:
                 console.log('.lpp file error!')
                 markdown_words.object = '## Upload and parse your .lpp file'

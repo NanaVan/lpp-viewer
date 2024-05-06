@@ -50,7 +50,7 @@ class IID():
         self.delta_v_over_v = delta_v_over_v # %
         self.L_CSRe = L_CSRe # m
         self.verbose = verbose
-        self.conn = sqlite3.connect("./stand-alone/ionic_data.db")
+        self.conn = sqlite3.connect("ionic_data.db")
         self.cur = self.conn.cursor()
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -428,7 +428,3 @@ class IID():
             else:
                 return -1
 
-
-
-if __name__ == "__main__":
-    iid = IID("./GSI_133Sn_setting_v3.lpp", 243.5, 3000, 4096, 2.37, 0.4, 1.4098)
