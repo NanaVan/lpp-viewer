@@ -69,7 +69,9 @@ class IID():
         with open(lppion, encoding='latin-1') as lpp:
             while True:
                 line = lpp.readline().strip()
-                if line == "[D4_DipoleSettings]":
+                if line.split('=')[0] == "Settings on A,Z ":
+                    self.setting_nuclei = line.split('=')[-1].split()[0]
+                elif line == "[D4_DipoleSettings]":
                     self.Brho = float(lpp.readline().strip().split()[2]) # Tm
                 elif line == "[Calculations]":
                     break

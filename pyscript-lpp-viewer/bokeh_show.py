@@ -8,6 +8,7 @@ from bokeh.layouts import layout, row, column, Spacer
 from bokeh.palettes import Category10_9
 
 import numpy as np
+import re
 from scipy.special import erf
 from iid import IID
 
@@ -66,6 +67,7 @@ class Bokeh_show():
                 URL.revokeObjectURL(link.href);
             }
         """
+        self.data_complete = True # the status of the TOF simulation display, True for show all the simulation result in storage, False for simulation cut-off limited by the 32-bit wsm service
         
     def _log(self, status, tab_position='MAIN'):
         '''
@@ -84,9 +86,9 @@ class Bokeh_show():
         return xs, ys for hist-like patches, y_value
         '''
         x_shift_left, x_shift_right = x_range - (x_range[1] - x_range[0])/2, x_range + (x_range[1] - x_range[0])/2
-        y_value = peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig))
+        y_value = (peak_area / 2 * (-erf((x_shift_left - peak_loc) / np.sqrt(2) / peak_sig) + erf((x_shift_right - peak_loc) / np.sqrt(2) / peak_sig))).astype(np.float32)
         # cut off with threshold
-        x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[-1]])])
+        x_reset = np.concatenate([x_shift_left, np.array([x_shift_right[-1]]).astype(np.float32)]).astype(np.float32)
         x_start, x_end = peak_loc - np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area)), peak_loc + np.sqrt(- 2 * peak_sig**2 * np.log( np.sqrt(2 * np.pi) * peak_sig * threshold / peak_area))
         start_index = np.searchsorted(x_reset, x_start) - 1
         end_index = np.searchsorted(x_reset, x_end)
@@ -97,8 +99,8 @@ class Bokeh_show():
             end_index = end_index - 1 if y_value[end_index-1] <= threshold else end_index
             ys = y_value[start_index:end_index]
             xs = x_reset[start_index:end_index+1]
-            ys = np.concatenate([np.tile(ys.reshape(-1), (2,1)).T.reshape(-1), np.array([threshold, threshold, ys[0]])])
-            xs = np.concatenate([np.tile(xs.reshape(-1), (2,1)).T.reshape(-1)[1:], np.array([xs[0], xs[0]])])
+            ys = np.concatenate([np.tile(ys.reshape(-1), (2,1)).T.reshape(-1), np.array([threshold, threshold, ys[0]]).astype(np.float32)]).astype(np.float32)
+            xs = np.concatenate([np.tile(xs.reshape(-1), (2,1)).T.reshape(-1)[1:], np.array([xs[0], xs[0]]).astype(np.float32)]).astype(np.float32)
         except:
             return [], [], y_value
         return xs, ys, y_value
@@ -222,22 +224,31 @@ class Bokeh_show():
             else:
                 result =  self.iid.cur.execute("SELECT min(REVTIME), max(REVTIME) FROM TOFION").fetchall()
                 x_start = np.floor(float(result[0][0])) - 0.5
-                y_start = np.ceil(float(result[0][1])) + 0.5
-                x_range = np.arange(x_start, y_start, step=self.iid.interval_revT*1e-3).astype(np.float32) # channel
-                xs, ys, y = [], [], []
+                x_end = np.ceil(float(result[0][1])) + 0.5
+                if (x_end - x_start)/self.iid.interval_revT > 1e3: # limit for 1e6 points
+                    self.data_complete = False
+                    temp_A, temp_element, _ = re.split("([A-Z][a-z]?)", self.iid.setting_nuclei)
+                    temp_Z = self.iid.cur.execute("SELECT Z FROM TOFION WHERE ELEMENT=?", (temp_element,)).fetchone()[0]
+                    temp_revT = self.iid.cur.execute("SELECT REVTIME FROM TOFION WHERE ELEMENT=? AND N=? AND TYPE='bare'", (temp_element, int(temp_A)-int(temp_Z))).fetchone()[0]
+                    x_range = np.arange(float(temp_revT)-self.iid.interval_revT*1e3/2, float(temp_revT)+self.iid.interval_revT*1e3/2, step=self.iid.interval_revT*1e-3).astype(np.float32) # channel
+                else:
+                    self.data_complete = True
+                    x_range = np.arange(x_start, x_end, step=self.iid.interval_revT*1e-3).astype(np.float32) # channel
+                #x_range = np.arange(x_start, x_end, step=self.iid.interval_revT*1e-3).astype(np.float32) # channel
+                xs, ys, y = [], [], np.zeros_like(x_range, dtype=np.float32)
                 for peak_area, peak_sig, peak_loc in zip(data['yield'], data['peak_sig'], data['rev_time']):
                     temp_xs, temp_ys, temp_y = self.make_patches(peak_loc, peak_sig*1e-3, peak_area, x_range, 1)
                     xs.append(temp_xs)
                     ys.append(temp_ys)
-                    y.append(temp_y)
+                    y += temp_y
+                print('flag: end patches calculation')
                 data['xs'] = xs
                 data['ys'] = ys
                 line['x'] = x_range
+                line['y'] = y.tolist()
                 try:
-                    line['y'] = np.sum(y, axis=0)
-                    line['sig_y'] = np.abs(1/self.iid.gamma_t**2 - 1 + self.iid.L_CSRe**2 / self.iid.c**2 * 1e18 / x_range**2) * self.iid.delta_Brho_over_Brho / 6 * x_range * 10 + self.iid.min_sigma_t
+                    line['sig_y'] = np.abs(1/self.iid.gamma_t**2 - 1 + self.iid.L_CSRe**2 / self.iid.c**2 * 1e18 / x_range**2).astype(np.float32) * self.iid.delta_Brho_over_Brho / 6 * x_range * 10 + self.iid.min_sigma_t
                 except:
-                    line['y'] = [np.sum([y[i][j] for i in range(len(y))]) for j in range(len(x_range))]
                     line['sig_y'] = [np.abs(1/self.iid.gamma_t**2 - 1 + self.iid.L_CSRe**2 / self.iid.c**2 * 1e18 / x**2) * self.iid.delta_Brho_over_Brho / 6 * x * 10 + self.iid.min_sigma_t for x in x_range]
                 yield_top = int(np.log10(np.max(data['total_yield'])))
                 data['color'] = [Category10_9[yield_top-int(np.log10(item))] if yield_top - int(np.log10(item)) <= 8 else Category10_9[-1] for item in data['total_yield']]
@@ -317,7 +328,10 @@ class Bokeh_show():
             self._update(1, 'TOF', None)
             self.MAIN_button_reset.visible = True
             print('update complete!')
-            self._log('update channel interval complete!')
+            if self.data_complete:
+                self._log('update channel interval complete!')
+            else:
+                self._log('update channel interval complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
         self.TOF_input_interval_revT.on_change('value', update_interval_revT)
         # find ion
         result = self.iid.cur.execute("SELECT DISTINCT ION, ISOMERIC FROM OBSERVEDION").fetchall()
@@ -359,7 +373,10 @@ class Bokeh_show():
                     self._update(0, 'TOF')
                 self.MAIN_button_reset.visible = True
                 print('setting complete!')
-                self._log('setting TOF figure threshold complete!')
+                if self.data_complete:
+                    self._log('setting TOF figure threshold complete!')
+                else:
+                    self._log('setting TOF figure threshold complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             else:
                 self.TOF_checkbox_yield_threshold.active = True
         def threshold_switch_yield(attr, old, new):
@@ -371,7 +388,10 @@ class Bokeh_show():
                     self._update(0, 'TOF')
                 self.MAIN_button_reset.visible = True
                 print('setting complete!')
-                self._log('setting TOF yield threshold complete!')
+                if self.data_complete:
+                    self._log('setting TOF yield threshold complete!')
+                else:
+                    self._log('setting TOF yield threshold complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             else:
                 self.TOF_checkbox_figure_threshold.active = True
         self.TOF_checkbox_figure_threshold.on_change('active', threshold_switch_figure)
@@ -381,7 +401,10 @@ class Bokeh_show():
             self._update(1, 'TOF', None)
             self.MAIN_button_reset.visible = True
             print('setting complete!')
-            self._log('setting TOF threshold complete!')
+            if self.data_complete:
+                self._log('setting TOF threshold complete!')
+            else:
+                self._log('setting TOF threshold complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
         self.TOF_input_show_threshold.on_change('value', set_show_threshold)
         def change_labels_threshold(attr, old, new):
             if self.TOF_checkbox_labels_on.active:
@@ -1119,14 +1142,20 @@ class Bokeh_show():
                 self._update(1, 'TOF', None)
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update length of Ring complete!')
+                if self.data_complete:
+                    self._log('update length of Ring complete!')
+                else:
+                    self._log('update length of Ring complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_delta_Brho_over_Brho(attr, old, new):
                 print('update ΔΒρ/Βρ ...')
                 self.iid.update_delta_Brho_over_Brho(float(new), False)
                 self._update(1, 'TOF', None)
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update ΔΒρ/Βρ complete!')
+                if self.data_complete:
+                    self._log('update ΔΒρ/Βρ complete!')
+                else:
+                    self._log('update ΔΒρ/Βρ complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_gamma_t(attr, old, new):
                 self.MAIN_input_alpha_p.value = 1/float(new)**2
                 print('update γt ...')
@@ -1134,21 +1163,30 @@ class Bokeh_show():
                 self._update(1, 'TOF', None)
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update γt / αp complete!')
+                if self.data_complete:
+                    self._log('update γt / αp complete!')
+                else:
+                    self._log('update γt / αp complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_min_delta_t(attr, old, new):
                 print('update minimum σ(T) ...')
                 self.iid.update_min_delta_t(float(new), False)
                 self._update(1, 'TOF', None)
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update minimum σ(T) complete!')
+                if self.data_complete:
+                    self._log('update minimum σ(T) complete!')
+                else:
+                    self._log('update minimum σ(T) complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_Brho(attr, old, new):
                 print('calibrate Brho ...')
                 self.iid.calibrate_Brho(float(new), False)
                 self._update(1, 'TOF', None)
                 self.MAIN_button_reset.visible = True
                 print('calibrate complete!')
-                self._log('calibrate Bρ complete!')
+                if self.data_complete:
+                    self._log('calibrate Bρ complete!')
+                else:
+                    self._log('calibrate Bρ complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def set_Brho_on(attr, old, new):
                 if self.MAIN_checkbox_Brho.active:
                     self.MAIN_input_Brho.disabled = False
@@ -1243,7 +1281,10 @@ class Bokeh_show():
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update length of Ring complete!')
+                if self.data_complete:
+                    self._log('update length of Ring complete!')
+                else:
+                    self._log('update length of Ring complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_delta_Brho_over_Brho(attr, old, new):
                 print('update ΔΒρ/Βρ ...')
                 self.iid.update_delta_Brho_over_Brho(float(new), self.Schottky_checkbox_ec_on.active)
@@ -1255,7 +1296,10 @@ class Bokeh_show():
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update ΔΒρ/Βρ complete!')
+                if self.data_complete:
+                    self._log('update ΔΒρ/Βρ complete!')
+                else:
+                    self._log('update ΔΒρ/Βρ complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_gamma_t(attr, old, new):
                 self.MAIN_input_alpha_p.value = 1/float(new)**2
                 print('update γt ...')
@@ -1268,7 +1312,10 @@ class Bokeh_show():
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update γt / αp complete!')
+                if self.data_complete:
+                    self._log('update γt / αp complete!')
+                else:
+                    self._log('update γt / αp complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_min_delta_t(attr, old, new):
                 print('update minimum σ(T) ...')
                 self.iid.update_min_delta_t(float(new), self.Schottky_checkbox_ec_on.active)
@@ -1280,7 +1327,10 @@ class Bokeh_show():
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
                 self.MAIN_button_reset.visible = True
                 print('update complete!')
-                self._log('update minimum σ(T) complete!')
+                if self.data_complete:
+                    self._log('update minimum σ(T) complete!')
+                else:
+                    self._log('update minimum σ(T) complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def update_Brho(attr, old, new):
                 print('calibrate Brho ...')
                 self.iid.calibrate_Brho(float(new), self.Schottky_checkbox_ec_on.active)
@@ -1292,7 +1342,10 @@ class Bokeh_show():
                     self.Schottky_select_harmonic.value = self.Schottky_select_harmonic.options[0]
                 self.MAIN_button_reset.visible = True
                 print('calibrate complete!')
-                self._log('calibrate Bρ complete!')
+                if self.data_complete:
+                    self._log('calibrate Bρ complete!')
+                else:
+                    self._log('calibrate Bρ complete! Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
             def set_Brho_on(attr, old, new):
                 if self.MAIN_checkbox_Brho.active:
                     self.Schottky_input_peakloc.disabled = True
@@ -1382,7 +1435,10 @@ class Bokeh_show():
             self.TOF_labels.visible = False
 
         print('Bokeh: initial complete!')
-        self._log('Bokeh: initial complete! Please check the values of ΔΒρ/Βρ and γt for your own setting.')
+        if self.data_complete:
+            self._log('Bokeh: initial complete! Please check the values of ΔΒρ/Βρ and γt for your own setting.')
+        else:
+            self._log('Bokeh: initial complete! Please check the values of ΔΒρ/Βρ and γt for your own setting. Warning: TOF Simulation results stored in memory are incomplete due to the limitations of the 32-bit wsm service.')
         return column([row([column([row([self.MAIN_input_L_CSRe, self.MAIN_input_delta_Brho_over_Brho, self.MAIN_input_gamma_t, self.MAIN_input_alpha_p]), row([self.MAIN_input_Brho, self.MAIN_input_min_sigma_t, self.MAIN_div_log]), row([self.MAIN_checkbox_Brho, Spacer(width=210), self.MAIN_button_reset])]), Spacer(width=100), self.calc_tab]), self.MAIN_tab])
 
 #curdoc().add_root(Bokeh_show('./Test_CSRe_173Er67.lpp', 243., 3000, 4096, 1.34, 0.2, 1.34, 0.5, 0.5, 1e-6)._show('TOF'))
