@@ -1,5 +1,0 @@
-name = "LPP viewer"
-packages = ["bokeh==3.6.2", "panel==1.3.8", "markdown-it-py", "numpy", "scipy", "sqlite3"]
-[[fetch]]
-files = ['iid.py', 'bokeh_show.py', 'ionic_data.db']
-from = './'
