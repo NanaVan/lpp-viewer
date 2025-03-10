@@ -278,7 +278,8 @@ class IID():
             # filter mass / Q
             if mass / Q <= upper_mass_over_Q and mass / Q >= lower_mass_over_Q:
                 ion_Brho = mass / Q * self.gamma_setting * beta * self.c * self.u2kg / self.e
-                ion_L = self.L_CSRe * (1 + (ion_Brho-self.Brho)/self.Brho/self.gamma_t**2)
+                # ion_L = self.L_CSRe * (1 + (ion_Brho-self.Brho)/self.Brho/self.gamma_t**2) change the relationship with log func
+                ion_L = np.exp(np.log(self.L_CSRe) + (np.log(ion_Brho) - np.log(self.Brho))/self.gamma_t**2)
                 ion_rev_freq = beta * self.c / ion_L *1e-6 # MHz
                 ion_weight = ion_yield * Q**2 * ion_rev_freq
                 harmonics = np.arange(np.ceil(lower_freq/ion_rev_freq), np.floor(upper_freq/ion_rev_freq)+1).astype(int)
