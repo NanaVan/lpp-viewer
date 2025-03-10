@@ -121,7 +121,7 @@ class Bokeh_show():
                     else:
                         result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, PSEUDOGAMMA FROM ECOOLERION WHERE WEIGHT>=?", (self.Schottky_input_show_threshold.value,)).fetchall()
             else:
-                if data_type:
+                if data_type == 'ISO':
                     if self.Schottky_checkbox_figure_threshold.active:
                         result = self.iid.cur.execute("SELECT ION, ELEMENT, N, Z, ISOMERIC, PEAKLOC, PEAKSIG, HARMONIC, REVFREQ, HALFLIFE, YIELD, TOTALYIELD, WEIGHT, PEAKMAX, GAMMA FROM ISOCHRONOUSION WHERE PEAKMAX>=? AND HARMONIC=?", (self.Schottky_input_show_threshold.value, harmonic)).fetchall()
                     else:
