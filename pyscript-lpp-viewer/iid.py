@@ -426,7 +426,7 @@ class IID():
                 try:
                     temp_0 = float(temp[0]) / np.log(2) * self.time_unit[temp[-1]]
                 except:
-                    temp_0 = float(''.join(re.split("(\d+)", temp[0])[1:])) / np.log(2) * self.time_unit[temp[-1]]
+                    temp_0 = float(''.join(re.split(r"(\d+)", temp[0])[1:])) / np.log(2) * self.time_unit[temp[-1]]
                 return temp_0
             else:
                 return -1

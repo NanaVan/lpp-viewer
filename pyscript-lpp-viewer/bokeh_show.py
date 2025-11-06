@@ -16,7 +16,7 @@ class Bokeh_show():
     '''
     A bokeh to show the yield/weight heatmap with corresponding revolution and spectrum figure
     '''
-    def __init__(self, lppion, cen_freq, span, win_len, interval_revT, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v=1e-6, L_CSRe=128.8):
+    def __init__(self, lppion, cen_freq, span, win_len, interval_revT, gamma_t, delta_Brho_over_Brho, gamma_setting, min_sigma_t, min_sigma_f, delta_v_over_v=1e-6, L_CSRe=277.29):
         '''
         extract all the secondary fragments and their respective yields calculated by LISE++
         (including Mass, Half-life, Yield of all the fragments)
