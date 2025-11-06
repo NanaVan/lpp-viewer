@@ -1106,7 +1106,7 @@ class Bokeh_show():
         ion_completion = ["{:}+({:})".format(ion, isometric) for ion, isometric in result]
         self.MAIN_select_calc_ion = Select(options=ion_completion, value=ion_completion[2], title='targeted ion', height=50, stylesheets=[self.set_styles['numericinput']])
         self.MAIN_input_calc_gamma_t = NumericInput(value=self.iid.gamma_t, low=0.0001, high=5.0000, height=50, mode='float', title='γt', stylesheets=[self.set_styles['numericinput']])
-        self.MAIN_input_calc_Brho = NumericInput(value=1., height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])        
+        self.MAIN_input_calc_Brho = NumericInput(value=self.iid.Brho, height=50, low=1., high=15., mode='float', title='Bρ [Tm]', stylesheets=[self.set_styles['numericinput']])        
         def change_ion(attr, old, new):
             ion, isometric = self.MAIN_select_calc_ion.value.split('(')
             mass, Q = self.iid.cur.execute("SELECT MASS, Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[:-1], isometric[:-1])).fetchone()
@@ -1129,7 +1129,6 @@ class Bokeh_show():
         self.MAIN_select_calc_ion.on_change('value', change_ion)
         self.MAIN_input_calc_gamma_t.on_change('value', calc_Brho)
         self.MAIN_input_calc_Brho.on_change('value', calc_gamma_t)
-        self.MAIN_input_calc_Brho.value = self.iid.Brho        
         self.calc_tab = Tabs(tabs=[TabPanel(child=row([self.MAIN_select_calc_ion, column([self.MAIN_input_calc_gamma_t, self.MAIN_input_calc_Brho])]), title='Ion Calculation')], stylesheets=[self.set_styles['tabs']])
 
         # status
