@@ -2,7 +2,7 @@
 An online tool to display spectrum simulation according to .lpp file from LISE++
 * Constant values: CODATA 2018
 * Nuclear data: NUBASE2020
-* Python library: `SQLite3`, `Numpy 1.22`, `Scipy`, `Bokeh 3.2.2, Panel 1.3.8 (online-pyscript)`, `Bokeh 3.6.2, Panel 1.5.4`
+* Python library: `SQLite3`, `Numpy 1.22`, `Scipy`, `Bokeh 3.6.3, Panel 1.7.5 (online-pyscript)`, `Bokeh 3.8.0, Panel 1.8.2`
 
 ## Web version: deploy from .\pyscript-lpp-viewer
 webside address: [China/Overseas](https://lpp-viewer.pages.dev/)
