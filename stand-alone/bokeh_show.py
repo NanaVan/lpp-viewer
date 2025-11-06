@@ -405,8 +405,8 @@ class Bokeh_show():
                 self.TOF_spectrum_linear.visible = True
         self.TOF_checkbox_log_on.on_change('active', set_log_on)
         # change x range
-        self.TOF_input_x_start = NumericInput(value=620, low=500, high=700, height=50, mode='float', title='revolution start [ns]', stylesheets=[self.set_styles['numericinput']])
-        self.TOF_input_x_end = NumericInput(value=640, low=510, high=800, height=50, mode='float', title='revolution end [ns]', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_input_x_start = NumericInput(value=800, low=300, high=3000, height=50, mode='float', title='revolution start [ns]', stylesheets=[self.set_styles['numericinput']])
+        self.TOF_input_x_end = NumericInput(value=1500, low=400, high=4000, height=50, mode='float', title='revolution end [ns]', stylesheets=[self.set_styles['numericinput']])
         def change_x_range(attr, old, new):
             if float(self.TOF_input_x_end.value) > float(self.TOF_input_x_start.value):
                 if self.TOF_checkbox_log_on.active:
@@ -476,6 +476,10 @@ class Bokeh_show():
         self.TOF_input_y_end.value = np.max(self.TOF_line_source.data['y']) + 10
         self.TOF_spectrum_log.tools[-1].renderers = [TOF_log_ions]
         result = self.iid.cur.execute("SELECT sum(yield) FROM TOFION WHERE REVTIME>=? AND REVTIME<=?", (self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end)).fetchone()[0]
+        #print("yield of ions (rev time between {:} and {:} ns): {:.4E} [ppp]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result))
+        print("{:}".format(self.TOF_spectrum_log.x_range.start))
+        print("{:}".format(self.TOF_spectrum_log.x_range.end))
+        print("{:}".format(result))
         self.TOF_div_yield_X_range.text = "yield of ions (rev time between {:} and {:} ns): {:.4E} [ppp]".format(self.TOF_spectrum_log.x_range.start, self.TOF_spectrum_log.x_range.end, result)
         # spectrum (linear scale)
         self.TOF_spectrum_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms),    1 channel = 0.1 ps', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.TOF_spectrum_log.x_range, output_backend='webgl')
@@ -510,7 +514,7 @@ class Bokeh_show():
         self.TOF_plot.yaxis.axis_label_text_font_size = '16px'
         self.TOF_plot.yaxis.major_label_text_font_size = '14px'
         self.TOF_plot.yaxis.axis_label_text_font_style = 'bold'
-        TOF_plot_ions = self.TOF_plot.dot(x='rev_time', y='peak_sig', source=self.TOF_ions_source, color='red', size=10)
+        TOF_plot_ions = self.TOF_plot.scatter(x='rev_time', y='peak_sig', marker='dot', source=self.TOF_ions_source, color='red', size=10)
         self.TOF_plot.line(x='x', y='sig_y', source=self.TOF_line_source, color='gray')
         self.TOF_plot.y_range.start = self.iid.min_sigma_t - 0.1
         self.TOF_plot.tools[-1].renderers = [TOF_plot_ions]
@@ -1154,8 +1158,8 @@ class Bokeh_show():
                 else:
                     self.MAIN_input_Brho.disabled = True
             def reset_figure():
-                self.TOF_input_x_start.value = 620
-                self.TOF_input_x_end.value = 640
+                self.TOF_input_x_start.value = 800
+                self.TOF_input_x_end.value = 1500
                 self.MAIN_button_reset.visible = False
             plot = [self.TOF_spectrum_linear, self.TOF_spectrum_log]
 
@@ -1302,8 +1306,8 @@ class Bokeh_show():
                     self.Schottky_button_calibrate.disabled = False
                     self.MAIN_input_Brho.disabled = True
             def reset_figure():
-                self.TOF_input_x_start.value = 620
-                self.TOF_input_x_end.value = 640
+                self.TOF_input_x_start.value = 800
+                self.TOF_input_x_end.value = 1500
                 self.MAIN_button_reset.visible = False
             if self.Schottky_checkbox_ec_on.active:
                 plot = [self.TOF_spectrum_linear, self.TOF_spectrum_log, self.Schottky_spectrum_default_linear, self.Schottky_spectrum_default_log, self.Schottky_spectrum_EC_linear, self.Schottky_spectrum_EC_log]
