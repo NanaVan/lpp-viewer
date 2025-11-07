@@ -196,8 +196,8 @@ class IID():
         i = 0
         while (i < len(ion)):
             temp = self.cur.execute("SELECT ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[i],isometric_state[i])).fetchone()
-            # drop the ion of life time < 10 ms
-            if self.life_transform(temp[-1]) <= 10 * self.time_unit['ms']:
+            # drop the ion of life time < 10 ms for the measured ion and keep the estimated ion
+            if self.life_transform(temp[-1]) <= 10 * self.time_unit['ms'] and temp[6] == 'measured':
                 i += 1
                 continue
             harmonics = np.arange(np.ceil(lower_freq/rev_freq[i]), np.floor(upper_freq/rev_freq[i])+1).astype(int)
@@ -270,8 +270,8 @@ class IID():
         i = 0
         while (i < len(ion)):
             temp = self.cur.execute("SELECT ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[i],isometric_state[i])).fetchone()
-            # drop the ion of life time < 1 s
-            if self.life_transform(temp[-2]) <= 1 * self.time_unit['s']:
+            # drop the ion of life time < 1 s for the measured ion and keep the estimated ion
+            if self.life_transform(temp[-2]) <= 1 * self.time_unit['s'] and temp[6] == 'measured':
                 i += 1
                 continue
             ion_yield, mass, Q = float(temp[7]), float(temp[5]), float(temp[-1])
