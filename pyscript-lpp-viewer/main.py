@@ -35,7 +35,7 @@ async def process_file(event):
                 else:
                     pass
                 console.log('Bokeh: complete')
-                pn.pane.Alert('## Info\n### The current interface is for functional testing only. \n### Please wait for the final version.').servable(target='testShow')
+                pn.pane.Alert('## Info\n### The current interface is for functional testing only. \n### Please wait for the final version. \n### If the simulated spectrum display appears faulty, please adjust your browser\'s zoom setting to re-rendder the plot.').servable(target='testShow')
                 pn.pane.Bokeh(show_Bokeh).servable(target='fileShow')
                 markdown_words.object = '## Upload and parse your .lpp file'
                 button_upload.disabled = False
