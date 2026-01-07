@@ -118,13 +118,10 @@ class IID():
                 SELECT LPPDATA.A, LPPDATA.ELEMENT, LPPDATA.Q, IONICDATA.Z, IONICDATA.N, IONICDATA.MASS, IONICDATA.SOURCE, LPPDATA.ION, LPPDATA.YIELD, IONICDATA.TYPE, IONICDATA.ISOMERIC, IONICDATA.HALFLIFE \
                 FROM IONICDATA \
                 INNER JOIN LPPDATA ON IONICDATA.Q=LPPDATA.Q AND IONICDATA.ELEMENT=LPPDATA.ELEMENT AND IONICDATA.A=LPPDATA.A")
-        # reset the yield of the isometric_state
-        result = self.cur.execute("SELECT YIELD, ION, ISOMERIC FROM OBSERVEDION WHERE ISOMERIC!=0").fetchall()
-        ## yield(isometric_state) = yield(bare) * 10**(-isometric_state)
-        #re_set = [(item[0]*10**(-int(item[2])), item[1], item[2]) for item in result]
-        # yield(isometric_state) = yield(bare) * 1/2
-        re_set = [(item[0]*0.5, item[1], item[2]) for item in result]
-        self.cur.executemany("UPDATE OBSERVEDION SET YIELD=? WHERE ION=? AND ISOMERIC=?", re_set)
+        # reset the yield of the different isometric_state
+        result = self.cur.execute("SELECT count(ISOMERIC), YIELD, ION FROM OBSERVEDION GROUP BY ION").fetchall()
+        re_set = [(item[1]/item[0], item[2]) for item in result]
+        self.cur.executemany("UPDATE OBSERVEDION SET YIELD=? WHERE ION=?", re_set)
         self.conn.commit()
 
     def calc_isochronous_peak(self, update_TOF=True):
