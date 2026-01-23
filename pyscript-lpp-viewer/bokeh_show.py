@@ -904,7 +904,7 @@ class Bokeh_show():
         self.Schottky_spectrum_default_log.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_log.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_log.xaxis.axis_label_text_font_style = 'bold'
-        self.Schottky_spectrum_default_log.yaxis.axis_label = "noise power (Q^2*f^2*yield) [arb. unit]"
+        self.Schottky_spectrum_default_log.yaxis.axis_label = r"noise power(Q$$^2$$f$$^2$$count) [arb. unit]"
         self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_log.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_style = 'bold'
