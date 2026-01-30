@@ -966,10 +966,12 @@ class Bokeh_show():
                 TableColumn(field='yield', title='yield', formatter=ScientificFormatter(precision=5)),
                 TableColumn(field='harmonic', title='harmonic'),
                 TableColumn(field='peak_loc', title='peak loc [kHz]', formatter=NumberFormatter(format='0[.]0000')),
-                TableColumn(field='rev_freq', title='rev freq [MHz]', formatter=NumberFormatter(format='0[.]000000'))
+                TableColumn(field='rev_freq', title='rev freq [MHz]', formatter=NumberFormatter(format='0[.]000000')),
+                TableColumn(field='peak_sig', title='peak sig [kHz]', formatter=NumberFormatter(format='0[.]0000'))
+                
         ]
         self.Schottky_table_default = DataTable(source=self.Schottky_ions_default_source, columns=columns, width=1000, height=300, frozen_columns=3, index_position=-1, sortable=True, selectable=True, stylesheets=[InlineStyleSheet(css='.slick-cell {height: 20px; font-size: 18px;} .slick-cell.selected {background-color: #F1B6B9;} .slick-header-column {height: 20px; font-size: 16px;}')])
-        self.Schottky_button_save_datatable_default.js_on_click(CustomJS(args=dict(source=self.Schottky_table_default.source, columns=['ion', 'isometric', 'half_life', 'weight', 'yield', 'harmonic', 'peak_loc', 'rev_freq']), code=self.js_save_dataTable))
+        self.Schottky_button_save_datatable_default.js_on_click(CustomJS(args=dict(source=self.Schottky_table_default.source, columns=['ion', 'isometric', 'half_life', 'weight', 'yield', 'harmonic', 'peak_loc', 'rev_freq', 'peak_sig']), code=self.js_save_dataTable))
         # default select function
         def selected_ion_default(attr, old, new):
             try:
