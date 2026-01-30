@@ -89,7 +89,7 @@ pn.Column(
         ),
     _alert,
     _bokeh,
-    pn.pane.Markdown('Web generated from <a href="https://github.com/NanaVan/lpp-viewer">NanaVan/lpp-viewer</a>(<a href="https://github.com/NanaVan/lpp-viewer/issues">bug reports</a>). Copyright 2025 Q.Wang.', styles={'color': 'gray', 'text-align': 'left'}),
+    pn.pane.Markdown('Web generated from <a href="https://github.com/NanaVan/lpp-viewer">NanaVan/lpp-viewer</a>(<a href="https://github.com/NanaVan/lpp-viewer/issues">bug reports</a>). Copyright 2026 Q.Wang.', styles={'color': 'gray', 'text-align': 'left'}),
     width=1600 
     ).servable()
 
