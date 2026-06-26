@@ -1,11 +1,11 @@
 name = "LPP viewer"
-#packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "pandas", "scipy", "sqlite3"]
-packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "sqlite3"]
+packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "pandas", "scipy", "sqlite3"]
+#packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "sqlite3"]
 [[fetch]]
 files = ['iid.py', 'bokeh_show.py', 'ionic_data.bin']
 from = './'
-#[pyodide]
-## 推送到 cloudflare 适用源
-#index = "https://cdn.jsdelivr.net/pyodide/v0.28.1/full/"
+[pyodide]
+# 推送到 cloudflare 适用源
+index = "https://cdn.jsdelivr.net/pyodide/v0.28.1/full/"
 # 本地测试适用源
 #index = "https://mirrors.nju.edu.cn/pyodide/v0.28.1/full/"
