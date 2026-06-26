@@ -609,8 +609,8 @@ class Bokeh_show():
             self.Schottky_spectrum_EC_linear.x_range.end = float(new) / 2
             self.Schottky_spectrum_default_log.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*float(new)/self.iid.win_len)
             self.Schottky_spectrum_default_linear.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*float(new)/self.iid.win_len)
-            self.Schottky_spectrum_EC_log.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*float(new)/self.iid.win_len)
-            self.Schottky_spectrum_EC_linear.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*float(new)/self.iid.win_len)
+            self.Schottky_spectrum_EC_log.title.text = 'Simulated Spectrum (lifetime > 50 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*float(new)/self.iid.win_len)
+            self.Schottky_spectrum_EC_linear.title.text = 'Simulated Spectrum (lifetime > 50 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*float(new)/self.iid.win_len)
             self._update(1, 'ISO', None)
             if self.Schottky_checkbox_ec_on.active:
                 self._update(1, 'EC', None)
