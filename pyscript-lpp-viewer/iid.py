@@ -267,8 +267,8 @@ class IID():
         i = 0
         while (i < len(ion)):
             temp = self.cur.execute("SELECT ION,ELEMENT,N,Z,ISOMERIC,MASS,SOURCE,YIELD,TYPE,HALFLIFE,Q FROM OBSERVEDION WHERE ION=? AND ISOMERIC=?", (ion[i],isometric_state[i])).fetchone()
-            # drop the ion of life time < 1 s for the measured ion and keep the estimated ion
-            if (self.life_transform(temp[-2]) <= 1 * self.time_unit['s']) or (temp[-2] == 'n/a' and temp[6] == 'estimated'):
+            # drop the ion of life time < 50 ms for the measured ion and keep the estimated ion
+            if (self.life_transform(temp[-2]) <= 50 * self.time_unit['ms']) or (temp[-2] == 'n/a' and temp[6] == 'estimated'):
                 i += 1
                 continue
             ion_yield, mass, Q = float(temp[7]), float(temp[5]), float(temp[-1])

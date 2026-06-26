@@ -628,8 +628,8 @@ class Bokeh_show():
             self.iid.update_win_len(int(new), self.Schottky_checkbox_ec_on.active)
             self.Schottky_spectrum_default_log.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/float(new))
             self.Schottky_spectrum_default_linear.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/float(new))
-            self.Schottky_spectrum_EC_log.title.text ='Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/float(new))
-            self.Schottky_spectrum_EC_linear.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/float(new))
+            self.Schottky_spectrum_EC_log.title.text ='Simulated Spectrum (lifetime > 50 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/float(new))
+            self.Schottky_spectrum_EC_linear.title.text = 'Simulated Spectrum (lifetime > 50 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/float(new))
             self._update(1, 'ISO', None)
             if self.Schottky_checkbox_ec_on.active:
                 self._update(1, 'EC', None)
@@ -999,13 +999,13 @@ class Bokeh_show():
         self.Schottky_label_EC_source = ColumnDataSource(data=label)
         self.Schottky_harmonic_EC_source = ColumnDataSource(data=data_harmonic)
         # ecooler spectrum (log scale) 
-        self.Schottky_spectrum_EC_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
+        self.Schottky_spectrum_EC_log = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 50 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=(-self.iid.span/2,self.iid.span/2), y_axis_type='log', output_backend='webgl')
         self.Schottky_spectrum_EC_log.title.text_font_size = '25px'
         self.Schottky_spectrum_EC_log.tools[-1].tooltips = ion_tooltip
         self.Schottky_spectrum_EC_log.tools[-1].attachment = 'vertical'
         self.Schottky_spectrum_EC_log.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_EC_log.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.Schottky_spectrum_EC_log.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/self.iid.win_len)
+        self.Schottky_spectrum_EC_log.title.text = 'Simulated Spectrum (lifetime > 50 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/self.iid.win_len)
         self.Schottky_spectrum_EC_log.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_log.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_log.xaxis.axis_label_text_font_style = 'bold'
@@ -1023,13 +1023,13 @@ class Bokeh_show():
         except:
             pass
         # EC spectrum (linear scale) 
-        self.Schottky_spectrum_EC_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 10 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.Schottky_spectrum_EC_log.x_range, output_backend='webgl')
+        self.Schottky_spectrum_EC_linear = figure(width=1000, height=300, title='Simulated Spectrum (lifetime > 50 ms)', tools='pan, crosshair, tap, box_zoom, wheel_zoom, zoom_in, zoom_out, undo, redo, reset, save, hover', x_range=self.Schottky_spectrum_EC_log.x_range, output_backend='webgl')
         self.Schottky_spectrum_EC_linear.title.text_font_size = '25px'
         self.Schottky_spectrum_EC_linear.tools[-1].tooltips = ion_tooltip
         self.Schottky_spectrum_EC_linear.tools[-1].attachment = 'vertical'
         self.Schottky_spectrum_EC_linear.tools[-1].point_policy = 'follow_mouse'
         self.Schottky_spectrum_EC_linear.xaxis.axis_label = "{:} MHz [kHz]".format(self.iid.cen_freq)
-        self.Schottky_spectrum_EC_linear.title.text = 'Simulated Spectrum (lifetime > 10 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/self.iid.win_len)
+        self.Schottky_spectrum_EC_linear.title.text = 'Simulated Spectrum (lifetime > 50 ms),    ' + " 1 channel = {:.5f} kHz".format(1.25*self.iid.span/self.iid.win_len)
         self.Schottky_spectrum_EC_linear.xaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_linear.xaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_linear.xaxis.axis_label_text_font_style = 'bold'

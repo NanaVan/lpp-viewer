@@ -1,5 +1,7 @@
 name = "LPP viewer"
-packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "scipy", "sqlite3"]
+packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "pandas", "scipy", "sqlite3"]
 [[fetch]]
 files = ['iid.py', 'bokeh_show.py', 'ionic_data.db']
 from = './'
+[pyodide]
+index = "https://mirrors.nju.edu.cn/pyodide/v0.28.1/full/"
