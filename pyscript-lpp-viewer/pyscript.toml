@@ -1,5 +1,6 @@
 name = "LPP viewer"
-packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "pandas", "scipy", "sqlite3"]
+#packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "pandas", "scipy", "sqlite3"]
+packages = ["bokeh==3.6.3", "panel==1.7.5", "markdown-it-py", "numpy", "sqlite3", "https://cdn.jsdelivr.net/pyodide/v0.28.1/full/scipy-1.14.1-cp313-cp313-pyodide_2025_0_wasm32.whl", "https://cdn.jsdelivr.net/pyodide/v0.28.1/full/pandas-2.3.1-cp313-cp313-pyodide_2025_0_wasm32.whl"]
 [[fetch]]
 files = ['iid.py', 'bokeh_show.py', 'ionic_data.bin']
 from = './'
