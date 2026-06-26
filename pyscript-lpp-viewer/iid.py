@@ -50,7 +50,7 @@ class IID():
         self.delta_v_over_v = delta_v_over_v # %
         self.L_CSRe = L_CSRe # m
         self.verbose = verbose
-        self.conn = sqlite3.connect("ionic_data.db")
+        self.conn = sqlite3.connect("ionic_data.bin")
         self.cur = self.conn.cursor()
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
