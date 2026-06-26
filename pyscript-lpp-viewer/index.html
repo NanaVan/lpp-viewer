@@ -88,7 +88,29 @@
 </div>
 
 	</section>
-</body>
 
+	<!-- 核心修复逻辑：动态无校验加载 Pandas & Scipy -->
+	<script type="module">
+		// 监听 PyScript 运行时准备就绪的事件
+		addEventListener('py:ready', async (event) => {
+			// 从事件或全局 PyScript 实例获取底层 Pyodide 解释器
+			const pyodide = event.detail.interpreter;
+			
+			console.log("【LPP Viewer】核心依赖加载中，正在绕过 micropip 哈希校验...");
+			
+			try {
+				// 直接使用 pyodide.loadPackage 动态加载指定版本的 .whl 直链
+				await pyodide.loadPackage([
+					"https://cdn.jsdelivr.net/pyodide/v0.28.1/full/pandas-2.3.1-cp313-cp313-pyodide_2025_0_wasm32.whl",
+					"https://cdn.jsdelivr.net/pyodide/v0.28.1/full/scipy-1.14.1-cp313-cp313-pyodide_2025_0_wasm32.whl"
+				]);
+				console.log("【LPP Viewer】Pandas & Scipy 加载成功！");
+			} catch (err) {
+				console.error("【LPP Viewer】加载 Pandas 或 Scipy 失败:", err);
+			}
+		});
+	</script>
+
+</body>
 
 </html>
