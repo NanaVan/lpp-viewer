@@ -147,8 +147,12 @@ class Bokeh_show():
                 'yield': [item[10] for item in result],
                 'total_yield': [item[11] for item in result],
                 'weight': [item[12] for item in result],
-                'peak_max': [item[13] for item in result]
-                }
+                'peak_max': [item[13] for item in result]}
+            # setting patch colors for EC, life time > 1 sec with color 'indigo', others 'deepskyblue'
+            if data_type == 'EC':
+                data['patch_c'] = ['indigo' if self.iid.life_transform(item[9]) >= 1 * self.iid.time_unit['s'] else 'deepskyblue' for item in result]
+            else:
+                data['patch_c'] = ['darkgray' for item in result]
             if labels_on:
                 label = {}
                 label['x'] = [peak_loc for peak_loc, peak_max in zip(data['peak_loc'], data['peak_max']) if peak_max >= float(self.Schottky_input_labels_threshold.value)]
@@ -200,7 +204,8 @@ class Bokeh_show():
                 'gamma': [item[10] for item in result],
                 'peak_max': [item[11] for item in result],
                 'source': [item[12] for item in result],
-                'type': [item[13] for item in result]
+                'type': [item[13] for item in result],
+                'patch_c': ['darkgray' for item in result]
                 }
             if labels_on:
                 label = {}
@@ -254,7 +259,7 @@ class Bokeh_show():
                 data['color'] = [Category10_9[yield_top-int(np.log10(item))] if yield_top - int(np.log10(item)) <= 8 else Category10_9[-1] for item in data['total_yield']]
             return data, line
         else:
-            data = {'xs':[], 'ys':[], 'ion': [], 'element':[], 'N':[], 'Z':[], 'isometric': [], 'peak_loc': [], 'peak_sig': [], 'harmonic': [], 'rev_freq': [], 'rev_time': [], 'half_life': [], 'yield': [], 'total_yield': [], 'weight': [], 'gamma': [], 'pseudo_gamma': []}
+            data = {'xs':[], 'ys':[], 'ion': [], 'element':[], 'N':[], 'Z':[], 'isometric': [], 'peak_loc': [], 'peak_sig': [], 'harmonic': [], 'rev_freq': [], 'rev_time': [], 'half_life': [], 'yield': [], 'total_yield': [], 'weight': [], 'gamma': [], 'pseudo_gamma': [], 'patch_c': []}
             return data
 
     def _update(self, update_type=1, data_type=None, harmonic=None):
@@ -491,7 +496,7 @@ class Bokeh_show():
         self.TOF_spectrum_log.yaxis.axis_label_text_font_size = '16px'
         self.TOF_spectrum_log.yaxis.major_label_text_font_size = '14px'
         self.TOF_spectrum_log.yaxis.axis_label_text_font_style = 'bold'
-        TOF_log_ions = self.TOF_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
+        TOF_log_ions = self.TOF_spectrum_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='patch_c')
         self.TOF_spectrum_log.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_log.y_range.start = np.min(self.TOF_line_source.data['y'])
         self.TOF_spectrum_log.y_range.end = np.max(self.TOF_line_source.data['y']) + 10
@@ -514,7 +519,7 @@ class Bokeh_show():
         self.TOF_spectrum_linear.yaxis.axis_label_text_font_size = '16px'
         self.TOF_spectrum_linear.yaxis.major_label_text_font_size = '14px'
         self.TOF_spectrum_linear.yaxis.axis_label_text_font_style = 'bold'
-        TOF_linear_ions = self.TOF_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='darkgray')
+        TOF_linear_ions = self.TOF_spectrum_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.TOF_ions_source, color='patch_c')
         self.TOF_spectrum_linear.line(x='x', y='y', source=self.TOF_line_source, color='black')
         self.TOF_spectrum_linear.y_range.start = np.min(self.TOF_line_source.data['y'])
         self.TOF_spectrum_linear.y_range.end = np.max(self.TOF_line_source.data['y']) + 10
@@ -908,7 +913,7 @@ class Bokeh_show():
         self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_log.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_log.yaxis.axis_label_text_font_style = 'bold'
-        Schottky_log_default_ions = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='darkgray')
+        Schottky_log_default_ions = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='patch_c')
         self.Schottky_spectrum_default_log.line(x='x', y='y', source=self.Schottky_line_default_source, color='black')
         Schottky_log_default_harmonic = self.Schottky_spectrum_default_log.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_default_source, color='goldenrod')
         self.Schottky_spectrum_default_log.y_range.start = np.min(self.Schottky_line_default_source.data['y'])
@@ -931,7 +936,7 @@ class Bokeh_show():
         self.Schottky_spectrum_default_linear.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_default_linear.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_default_linear.yaxis.axis_label_text_font_style = 'bold'
-        Schottky_linear_default_ions = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='darkgray')
+        Schottky_linear_default_ions = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='red', source=self.Schottky_ions_default_source, color='patch_c')
         self.Schottky_spectrum_default_linear.line(x='x', y='y', source=self.Schottky_line_default_source, color='black')
         Schottky_linear_default_harmonic = self.Schottky_spectrum_default_linear.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_default_source, color='goldenrod')
         self.Schottky_spectrum_default_linear.y_range.start = np.min(self.Schottky_line_default_source.data['y'])
@@ -1013,7 +1018,7 @@ class Bokeh_show():
         self.Schottky_spectrum_EC_log.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_log.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_log.yaxis.axis_label_text_font_style = 'bold'
-        Schottky_log_EC_ions = self.Schottky_spectrum_EC_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.Schottky_ions_EC_source, color='deepskyblue')
+        Schottky_log_EC_ions = self.Schottky_spectrum_EC_log.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.Schottky_ions_EC_source, color='patch_c')
         self.Schottky_spectrum_EC_log.line(x='x', y='y', source=self.Schottky_line_EC_source, color='lightskyblue')
         Schottky_log_EC_harmonic = self.Schottky_spectrum_EC_log.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_EC_source, color='goldenrod')
         self.Schottky_spectrum_EC_log.tools[-1].renderers = [Schottky_log_EC_ions, Schottky_log_EC_harmonic]
@@ -1037,7 +1042,7 @@ class Bokeh_show():
         self.Schottky_spectrum_EC_linear.yaxis.axis_label_text_font_size = '16px'
         self.Schottky_spectrum_EC_linear.yaxis.major_label_text_font_size = '14px'
         self.Schottky_spectrum_EC_linear.yaxis.axis_label_text_font_style = 'bold'
-        Schottky_linear_EC_ions = self.Schottky_spectrum_EC_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.Schottky_ions_EC_source, color='deepskyblue')
+        Schottky_linear_EC_ions = self.Schottky_spectrum_EC_linear.patches(xs='xs', ys='ys', hover_color='darkorange', selection_color='lime', source=self.Schottky_ions_EC_source, color='patch_c')
         self.Schottky_spectrum_EC_linear.line(x='x', y='y', source=self.Schottky_line_EC_source, color='lightskyblue')
         Schottky_linear_EC_harmonic = self.Schottky_spectrum_EC_linear.patches(xs='xs', ys='ys', source=self.Schottky_harmonic_EC_source, color='goldenrod')
         self.Schottky_spectrum_EC_linear.tools[-1].renderers = [Schottky_linear_EC_ions, Schottky_linear_EC_harmonic]
